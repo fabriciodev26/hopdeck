@@ -964,7 +964,8 @@ async function shownSession(x) {
 
 // ── Imágenes reales (Sixel): se usan si el terminal las admite; si no, la vista rápida con medios bloques ──
 /** HOPDECK_SIXEL=1 las fuerza, =0 las apaga; sin definir, se usan si el terminal dijo que las admite (consulta DA1 al arrancar). */
-const sixelOn = () => process.env.HOPDECK_SIXEL === '1' || (process.env.HOPDECK_SIXEL !== '0' && E.sixelDetected);
+// En Windows Terminal (1.22+) la respuesta del terminal no siempre atraviesa ConPTY, así que ahí se activa sin esperarla.
+const sixelOn = () => process.env.HOPDECK_SIXEL === '1' || (process.env.HOPDECK_SIXEL !== '0' && (E.sixelDetected || (WIN && !!process.env.WT_SESSION)));
 
 /**
  * Quita de la entrada las respuestas del terminal a nuestras consultas y las guarda en `st`:
@@ -1025,7 +1026,7 @@ function hoverPopup(hv, rw, th) {
   const d = g.dec.get(0), lab = ` [Image #${hv.n}] `;
   let rows, tw, sx = null;
   if (d && d.rgba && sixelOn()) { // imagen real: se deja un hueco en blanco del tamaño de la imagen y se dibuja encima con Sixel
-    const cw = E.cell.w, ch = E.cell.h, maxCols = Math.max(8, Math.min(rw - 6, 140)), maxRows = Math.max(2, th - 5);
+    const cw = E.cell.w, ch = E.cell.h, maxCols = Math.max(8, Math.min(rw - 6, 36)), maxRows = Math.max(2, Math.min(th - 5, 9)); // vista previa pequeña: como mucho 36×9 celdas
     const k = Math.min((maxCols * cw) / d.w, (maxRows * ch) / d.h, 3);
     const iw = Math.max(1, Math.min(maxCols, Math.round((d.w * k) / cw))), ih = Math.max(1, Math.min(maxRows, Math.round((d.h * k) / ch))), key = `sx:${iw}x${ih}`;
     let data = g.cache.get(key);
