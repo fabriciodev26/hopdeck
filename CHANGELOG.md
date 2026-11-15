@@ -8,6 +8,8 @@
 - **Imágenes duplicadas en la galería:** Claude Code guarda cada imagen otra vez en una línea interna (`api-request-blob`). Ya no se cuentan dos veces.
 - **Hover de imagen en un chat nuevo:** si todavía no se había enlazado con su conversación, podía mostrar la imagen de otra conversación del mismo proyecto cuando coincidía el número. Ahora solo toma una conversación creada después de abrir el chat.
 - **Detección de `[Image #N]`:** calcula bien la columna con caracteres anchos delante (emoji, CJK) y acepta espacios no separables.
+- **Pregunta del primer arranque:** al responder, la pregunta se borra de la pantalla y deja una línea de resumen (antes se quedaba escrita como si siguiera pendiente), y el texto aclara que responder que no no impide abrir Hopdeck: el atajo solo afecta a lo que ocurre al escribir `claude`.
+- **Aviso de tamaño mínimo:** decía 60×12 y el programa exige 70×12.
 
 ## 1.2.0 · primera versión pública
 

@@ -1840,9 +1840,20 @@ function readKey(accept) {
   });
 }
 
-function askShortcut() {
-  process.stdout.write(`\n  ${C.brand}${C.bold}» Hop${R}${C.text}${C.bold}deck${R}\n\n  ${C.text}${C.bold}${T.offerQ}${R}\n  ${C.dim}${T.offerInfo}${R}\n\n  ${C.accent}${T.offerKeys}${R}\n`);
-  return readKey((k) => (k === '\r' || k === '\n' || /^[sSyY]$/.test(k) ? 'yes' : /^[nN]$/.test(k) ? 'no' : k === '\x1b' || /^[mM]$/.test(k) ? 'later' : undefined));
+/**
+ * Pinta la pregunta, espera la respuesta y la BORRA de la pantalla (si no, se quedaba escrita como si siguiera pendiente).
+ * Cada línea se ajusta al ancho del terminal para saber exactamente cuántas ocupa y poder subir el cursor hasta el principio.
+ */
+async function askShortcut() {
+  const width = Math.max(30, (process.stdout.columns || 80) - 4);
+  const block = ['', `  ${C.brand}${C.bold}» Hop${R}${C.text}${C.bold}deck${R}`, '', `  ${C.text}${C.bold}${T.offerQ}${R}`,
+    ...wrapText(T.offerInfo, width).map((l) => `  ${C.dim}${l}${R}`), '', `  ${C.accent}${T.offerKeys}${R}`];
+  process.stdout.write(block.join('\n') + '\n');
+  const ans = await readKey((k) => (k === '\r' || k === '\n' || /^[sSyY]$/.test(k) ? 'yes' : /^[nN]$/.test(k) ? 'no' : k === '\x1b' || /^[mM]$/.test(k) ? 'later' : undefined));
+  process.stdout.write(`\x1b[${block.length}A\x1b[J`); // sube hasta el principio de la pregunta y la borra
+  if (ans === 'no') process.stdout.write(`  ${C.dim}${T.offerNo}${R}\n`);
+  else if (ans === 'later') process.stdout.write(`  ${C.dim}${T.offerLater}${R}\n`);
+  return ans;
 }
 
 /**
@@ -1863,7 +1874,7 @@ async function offerShortcut(opts = {}) {
     r.baks.forEach((b) => process.stdout.write(`  ${C.dim}${T.bakMsg(shortPath(b))}${R}\n`));
     process.stdout.write(`\n  ${C.dim}${T.offerCont}${R}`);
     await readKey(() => true);
-    process.stdout.write('\n');
+    process.stdout.write('\r\x1b[2K'); // borra la línea «Pulsa una tecla…» y deja solo el resultado
   }
   return r.done.length ? 'yes' : 'failed';
 }
