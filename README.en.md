@@ -9,6 +9,8 @@
 
 [Español](README.md) · **English**
 
+[![npm](https://img.shields.io/npm/v/hopdeck.svg)](https://www.npmjs.com/package/hopdeck)
+[![CI](https://github.com/fabriciodev26/hopdeck/actions/workflows/ci.yml/badge.svg)](https://github.com/fabriciodev26/hopdeck/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A522-brightgreen.svg)](package.json)
 
