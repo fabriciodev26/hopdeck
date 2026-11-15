@@ -180,6 +180,7 @@ You almost never need to change anything. The most useful options:
 |---|---|
 | `HOPDECK_LANG` | `es` or `en` (default: system language) |
 | `HOPDECK_THEME` | `light` for light backgrounds |
+| `HOPDECK_SIXEL` | `1` forces the real image when hovering `[Image #N]`, `0` always uses blocks (auto-detected by default) |
 | `NO_COLOR` | Disable colors |
 | `CLAUDE_CONFIG_DIR` | Claude Code folder, if it is not `~/.claude` |
 | `HOPDECK_SKIP=1` | Skip Hopdeck once: `HOPDECK_SKIP=1 claude` |

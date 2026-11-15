@@ -17,6 +17,7 @@ const { baseName, tidy, home, shortPath, fuzzy, wrapText } = require('../lib/tex
 const hist = require('../lib/history');
 const { CONFIG_DIR, CACHE_FILE, textOf, isType, cacheLoad, cacheSave, readSession, decodeDir, projectDirs, buildProject, beginScan, endScan } = hist;
 const images = require('../lib/images');
+const { encodeSixel } = require('../lib/sixel');
 const { collectImages, decodePNG, decodeImage, scaleBox, fitSize, halfBlocks } = images;
 const { parseKeys, KEYMAP, printable, editBuf, normalizeKeys } = require('../lib/keys');
 const { stripJsonc, wtCtrlV, wtSettingsFile } = require('../lib/windows-terminal');
@@ -126,7 +127,7 @@ function ago(ms) {
 const S = { qpos: 0, pc: 0, fb: null, confirmMk: null, confirmClose: null, more: new Set(), qs: null, promptKind: 'folder', renameTarget: null, deep: false, deepHits: null, showHidden: false, prompt: null, help: false, loading: false, projects: [], pi: 0, si: 0, focus: 0, query: '', searching: false, poff: 0, soff: 0, flash: '', c: 0, coff: 0, open: null, live: new Set(), liveKey: '' };
 const SIDEBAR = process.argv.includes('--sidebar');
 let EMBED = false; // vista dividida con terminal embebido (Windows / sin tmux)
-const E = { sessions: new Map(), shown: null, focus: 'left', pend: null, deps: null, mouse: CFG.mouse !== false, hideSide: false, note: null, sel: null, gallery: null, hover: null };
+const E = { sessions: new Map(), shown: null, focus: 'left', pend: null, deps: null, mouse: CFG.mouse !== false, hideSide: false, note: null, sel: null, gallery: null, hover: null, sixelDetected: false, cell: { w: 10, h: 20 }, sixelKey: null, sixelAt: 0, sixelStale: false, sixelRetry: null };
 const SPIN = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 let spinT = null, frameN = 0, reloading = false;
 const needsSpin = () => S.loading || (E.gallery && (E.gallery.loading || E.gallery.pending)) || (E.hover && E.hover.g.pending) || [...E.sessions.values()].some((x) => x.working || (!x.ready && x === E.sessions.get(E.shown)));
@@ -961,6 +962,26 @@ async function shownSession(x) {
   return sess;
 }
 
+// ── Imágenes reales (Sixel): se usan si el terminal las admite; si no, la vista rápida con medios bloques ──
+/** HOPDECK_SIXEL=1 las fuerza, =0 las apaga; sin definir, se usan si el terminal dijo que las admite (consulta DA1 al arrancar). */
+const sixelOn = () => process.env.HOPDECK_SIXEL === '1' || (process.env.HOPDECK_SIXEL !== '0' && E.sixelDetected);
+
+/**
+ * Quita de la entrada las respuestas del terminal a nuestras consultas y las guarda en `st`:
+ * DA1 (ESC [ ? 61;4;… c): el atributo 4 significa que admite Sixel; y el tamaño en píxeles de una celda (ESC [ 6 ; alto ; ancho t).
+ */
+function parseTermReplies(s, st) {
+  return s
+    .replace(/\x1b\[\?([0-9;]*)c/g, (m, attrs) => { st.sixelDetected = attrs.split(';').includes('4'); return ''; })
+    .replace(/\x1b\[6;(\d+);(\d+)t/g, (m, hh, ww) => { const h = +hh, w = +ww; if (h >= 4 && h <= 200 && w >= 2 && w <= 100) st.cell = { w, h }; return ''; });
+}
+
+/** Secuencia que coloca el cursor y dibuja la imagen. Con HOPDECK_SIXEL_LOG (pruebas) la ruta y los datos se anotan en un archivo y no se escribe nada. */
+function emitSixel(row, col, data) {
+  if (process.env.HOPDECK_SIXEL_LOG) { try { fs.appendFileSync(process.env.HOPDECK_SIXEL_LOG, JSON.stringify({ row, col, data }) + '\n'); } catch { /* */ } return ''; }
+  return `\x1b[${row};${col}H` + data;
+}
+
 /** Texto de una fila del terminal virtual y la columna de cada carácter (los de ancho 2 ocupan dos celdas). */
 function rowChars(term, y) {
   const b = term.buffer.active, line = b.getLine(b.viewportY + y), cols = []; let text = '';
@@ -1002,8 +1023,15 @@ function hoverPopup(hv, rw, th) {
     setImmediate(() => { let d = false; try { d = decodeImage(img) || false; } catch { d = false; } g.dec.set(0, d); g.pending = false; if (active) render(); });
   }
   const d = g.dec.get(0), lab = ` [Image #${hv.n}] `;
-  let rows, tw;
-  if (d && d.rgba) {
+  let rows, tw, sx = null;
+  if (d && d.rgba && sixelOn()) { // imagen real: se deja un hueco en blanco del tamaño de la imagen y se dibuja encima con Sixel
+    const cw = E.cell.w, ch = E.cell.h, maxCols = Math.max(8, Math.min(rw - 6, 140)), maxRows = Math.max(2, th - 5);
+    const k = Math.min((maxCols * cw) / d.w, (maxRows * ch) / d.h, 3);
+    const iw = Math.max(1, Math.min(maxCols, Math.round((d.w * k) / cw))), ih = Math.max(1, Math.min(maxRows, Math.round((d.h * k) / ch))), key = `sx:${iw}x${ih}`;
+    let data = g.cache.get(key);
+    if (!data) { data = encodeSixel(scaleBox(d.rgba, d.w, d.h, iw * cw, ih * ch), iw * cw, ih * ch); g.cache.clear(); g.cache.set(key, data); }
+    sx = { data, iw, ih, key }; tw = iw; rows = Array.from({ length: ih }, () => ' '.repeat(iw));
+  } else if (d && d.rgba) {
     const sz = fitSize(d.w, d.h, Math.max(8, Math.min(rw - 6, 96)), Math.max(2, Math.min(th - 6, 18)) * 2), key = `${sz.tw}x${sz.th}`;
     let hb = g.cache.get(key);
     if (!hb) { hb = halfBlocks(scaleBox(d.rgba, d.w, d.h, sz.tw, sz.th), sz.tw, sz.th); g.cache.clear(); g.cache.set(key, hb); }
@@ -1021,7 +1049,7 @@ function hoverPopup(hv, rw, th) {
   let top = hv.at.y + 1; // debajo de la marca; si no cabe, encima; si tampoco, pegado al borde
   if (top + bh > th) top = hv.at.y - bh;
   if (top < 0) top = Math.max(0, th - bh);
-  return { left, top, bw, rows: box };
+  return { left, top, bw, rows: box, sixel: sx ? { ...sx, key: `${hv.k}|${sx.key}|${left},${top}` } : null };
 }
 
 /** La imagen que corresponde a "[Image #n]" en la conversación de este chat, o null si aún no está en el historial. */
@@ -1199,12 +1227,22 @@ function renderEmbed() {
     ...k('F1', T.bar1), ...k('F2', T.bar2), ...k('F3', E.mouse ? T.bar4 : T.bar5), ...k('F4', E.hideSide ? T.bar7 : T.bar6),
     [live ? '● ' + live : '', C.ok]], W));
   const changes = diffRows(rowsOut);
+  // imagen real (Sixel) sobre el hueco del cuadro: se dibuja al aparecer y se repite si algo reescribe esas filas (con un mínimo de 150 ms entre dibujos)
+  let sx = '';
+  if (pop && pop.sixel) {
+    const top = pop.top + 3, touched = lastChanged.some((y) => y >= top && y < top + pop.sixel.ih);
+    if (E.sixelKey !== pop.sixel.key || touched || E.sixelStale) {
+      const now = Date.now();
+      if (E.sixelKey === pop.sixel.key && now - E.sixelAt < 150) { E.sixelStale = true; if (!E.sixelRetry) E.sixelRetry = setTimeout(() => { E.sixelRetry = null; scheduleRender(); }, 160); }
+      else { sx = emitSixel(pop.top + 4, (SW ? SW + 2 : 1) + pop.left + 1, pop.sixel.data); E.sixelKey = pop.sixel.key; E.sixelAt = now; E.sixelStale = false; }
+    }
+  } else if (E.sixelKey) { E.sixelKey = null; E.sixelStale = false; } // al quitar el cuadro, las filas que cubría ya se reescriben solas con el texto del chat
   let cur = '';
   if (sh && sh.ready && E.focus === 'right' && !sh.cursorHidden && back === 0) {
     const b = sh.term.buffer.active;
     cur = `\x1b[${Math.min(th, b.cursorY + 1) + 2};${(SW ? SW + 1 : 0) + 1 + Math.min(rw - 1, b.cursorX)}H\x1b[?25h`;
   }
-  process.stdout.write((changes ? '\x1b[?2026h\x1b[?25l' + changes : '\x1b[?25l') + cur + (changes ? '\x1b[?2026l' : ''));
+  process.stdout.write((changes || sx ? '\x1b[?2026h\x1b[?25l' + changes + sx : '\x1b[?25l') + cur + (changes || sx ? '\x1b[?2026l' : ''));
 }
 
 function scheduleRender() {
@@ -1481,10 +1519,11 @@ function embedKillAll() { for (const sess of E.sessions.values()) { try { sess.p
 // Redibujado diferencial: solo se reescriben las filas que cambiaron desde el último cuadro.
 let lastRows = [], forceFull = true;
 const invalidate = () => { forceFull = true; };
+let lastChanged = []; // índices de las filas que reescribió el último diffRows (si pisan una imagen Sixel hay que volver a dibujarla)
 function diffRows(rows) {
-  let out = '';
+  let out = ''; lastChanged = [];
   for (let i = 0; i < rows.length; i++) {
-    if (forceFull || lastRows[i] !== rows[i]) out += `\x1b[${i + 1};1H` + rows[i];
+    if (forceFull || lastRows[i] !== rows[i]) { out += `\x1b[${i + 1};1H` + rows[i]; lastChanged.push(i); }
   }
   lastRows = rows.slice(); forceFull = false;
   return out;
@@ -1504,7 +1543,7 @@ function render() {
 let active = false;
 function enter() {
   if (active) return; active = true; invalidate();
-  process.stdout.write('\x1b[?1049h\x1b[?25l\x1b[2J' + ((EMBED || SIDEBAR) && E.mouse ? mouseModes(true) : ''));
+  process.stdout.write('\x1b[?1049h\x1b[?25l\x1b[2J' + ((EMBED || SIDEBAR) && E.mouse ? mouseModes(true) : '') + (EMBED && process.env.HOPDECK_SIXEL !== '0' ? '\x1b[c\x1b[16t' : '')); // consulta: ¿admite imágenes (Sixel)? ¿qué tamaño tiene una celda?
   process.stdin.setRawMode(true); process.stdin.resume();
 }
 function leave() {
@@ -1677,6 +1716,7 @@ async function run() {
   process.stdin.on('data', (buf) => {
     if (!active) return;
     let s = normalizeKeys(buf.toString('utf8'));
+    if (EMBED) { s = parseTermReplies(s, E); if (!s) return; } // respuestas del terminal a las consultas del arranque
     if (EMBED) {
       s = s.replace(/\x1b\[<(\d+);(\d+);(\d+)([Mm])/g, (m, b, x, y, t) => { onMouse(+b, +x, +y, t); return ''; });
       if (!s) return;
@@ -2016,7 +2056,7 @@ else {
   module.exports = {
     cw, strW, fit, clean, imageExt, exportImages, safeId, findClaude, install, backupProfile, ago, tidy, fuzzy, wrapText, parseKeys, KEYMAP, isType, T, S, CFG, E,
     readSession, buildProject, scan, scanAsync, finishScan, sortProjects, projectDirs,
-    view, flatList, stripBlock, offerShortcut, uninstallAll, commandName, suggestCommand, SNIP, MARK_A, MARK_B, toggleProject, cacheLoad, selNorm,
+    view, flatList, stripBlock, offerShortcut, uninstallAll, commandName, suggestCommand, parseTermReplies, sixelOn, SNIP, MARK_A, MARK_B, toggleProject, cacheLoad, selNorm,
     decodePNG, decodeImage, scaleBox, fitSize, halfBlocks, collectImages, extractImages,
     editBuf, normalizeKeys, stripJsonc, wtCtrlV, fbNames, fbOpen, fbRows, sidebarMouse, gitBranch, imageMarkerAt, shownSession, linkChats, findImageByNumber: images.findImageByNumber,
   };

@@ -682,3 +682,68 @@ test('hopdeck uninstall: desinstala de verdad (atajo, preferencias y caché) y s
   assert.ok(fs.readFileSync(perfil, 'utf8').startsWith('export A=1'), 'sin tocar el resto del perfil');
   assert.ok(fs.existsSync(perfil + '.hopdeck-backup'), 'la copia de seguridad del perfil se conserva');
 });
+
+// ───────────── Sixel: imágenes reales en el terminal ─────────────
+const sixel = require('../lib/sixel.js');
+/** Decodificador Sixel mínimo, independiente del codificador, para comprobarlo leyendo su salida de vuelta. */
+function decodeSixel(str) {
+  const head = str.match(/^\x1bP[0-9;]*q"(\d+);(\d+);(\d+);(\d+)/); assert.ok(head, 'empieza con DCS y atributos del ráster');
+  assert.ok(str.endsWith('\x1b\\'), 'termina con ST');
+  const w = +head[3], h = +head[4], body = str.slice(head[0].length, -2);
+  const pix = new Array(w * h).fill(null), pal = []; let cur = 0, x = 0, band = 0;
+  const paint = (ch, n = 1) => { const m = ch.charCodeAt(0) - 63; for (let k = 0; k < n; k++, x++) for (let bit = 0; bit < 6; bit++) if (m & (1 << bit)) { const y = band * 6 + bit; if (y < h && x < w) pix[y * w + x] = pal[cur]; } };
+  for (let i = 0; i < body.length;) {
+    const c = body[i];
+    if (c === '#') { const m = body.slice(i).match(/^#(\d+)(?:;2;(\d+);(\d+);(\d+))?/); if (m[2] !== undefined) pal[+m[1]] = [m[2], m[3], m[4]].map((v) => Math.round((+v * 255) / 100)); else cur = +m[1]; i += m[0].length; }
+    else if (c === '!') { const m = body.slice(i).match(/^!(\d+)(.)/); paint(m[2], +m[1]); i += m[0].length; }
+    else if (c === '$') { x = 0; i++; }
+    else if (c === '-') { x = 0; band++; i++; }
+    else { paint(c); i++; }
+  }
+  return { w, h, pix, palette: pal };
+}
+
+test('encodeSixel: una imagen de pocos colores se reproduce fielmente (con alto que no es múltiplo de 6)', () => {
+  const w = 13, h = 14, colores = [[255, 0, 0], [0, 255, 0], [0, 0, 255], [255, 255, 255], [20, 20, 30]];
+  const rgb = new Uint8Array(w * h * 3), esperado = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const c = colores[(Math.floor(x / 3) + Math.floor(y / 4)) % colores.length]; esperado.push(c); rgb.set(c, (y * w + x) * 3); }
+  const s = sixel.encodeSixel(rgb, w, h), d = decodeSixel(s);
+  assert.deepEqual([d.w, d.h], [w, h]);
+  assert.ok(d.palette.length <= colores.length, 'paleta exacta, sin colores de más');
+  for (let i = 0; i < w * h; i++) for (let c = 0; c < 3; c++) assert.ok(d.pix[i] && Math.abs(d.pix[i][c] - esperado[i][c]) <= 3, `píxel ${i} canal ${c}`); // el sixel guarda los colores en 0-100
+});
+
+test('encodeSixel: un degradado con miles de colores se reduce a 256 y queda parecido; repeticiones comprimidas', () => {
+  const w = 64, h = 48, rgb = new Uint8Array(w * h * 3);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) rgb.set([x * 4, y * 5, (x + y) * 2], (y * w + x) * 3);
+  const d = decodeSixel(sixel.encodeSixel(rgb, w, h));
+  assert.ok(d.palette.length > 1 && d.palette.length <= 256, `paleta de ${d.palette.length} colores`);
+  let err = 0, n = 0;
+  for (let i = 0; i < w * h; i++) { assert.ok(d.pix[i], `el píxel ${i} se dibuja`); for (let c = 0; c < 3; c++) { err += Math.abs(d.pix[i][c] - rgb[i * 3 + c]); n++; } }
+  assert.ok(err / n < 14, `error medio por canal ${(err / n).toFixed(1)} (de 255)`);
+  const plano = new Uint8Array(20 * 6 * 3).fill(200), s = sixel.encodeSixel(plano, 20, 6);
+  assert.ok(s.includes('!20~'), 'una fila entera del mismo color se escribe como !20~');
+});
+
+test('encodeSixel: una imagen de tamaño real se codifica en poco tiempo y con un tamaño razonable', () => {
+  const w = 1000, h = 440, rgb = new Uint8Array(w * h * 3);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) rgb.set([(x * 7 + y * 3) & 255, (x * 3) & 255, (y * 5) & 255], (y * w + x) * 3);
+  const t = Date.now(), s = sixel.encodeSixel(rgb, w, h);
+  assert.ok(Date.now() - t < 4000, `tardó ${Date.now() - t} ms`);
+  assert.ok(s.length < 6e6, `${(s.length / 1e6).toFixed(1)} MB`);
+  assert.equal(decodeSixel(s).h, h);
+});
+
+test('parseTermReplies: lee la respuesta del terminal (¿admite Sixel? ¿tamaño de celda?) y la quita de la entrada', () => {
+  const st = { sixelDetected: false, cell: { w: 10, h: 20 } };
+  assert.equal(hd.parseTermReplies('\x1b[?62;4;22c\x1b[6;19;9t', st), '', 'solo había respuestas del terminal');
+  assert.equal(st.sixelDetected, true, 'el atributo 4 es Sixel'); assert.deepEqual(st.cell, { w: 9, h: 19 }, 'celda de 9×19 píxeles');
+  assert.equal(hd.parseTermReplies('ab\x1b[?1;2cde', st), 'abde', 'el resto de la entrada se conserva');
+  assert.equal(st.sixelDetected, false, 'sin el 4 no hay Sixel');
+  hd.parseTermReplies('\x1b[?61;14;4;7c', st); assert.equal(st.sixelDetected, true, '14 no se confunde con 4, y el 4 se encuentra entre otros');
+  hd.parseTermReplies('\x1b[?61;14;7c', st); assert.equal(st.sixelDetected, false, 'ni el 14 ni el 7 son el 4');
+  const antes = { ...st.cell };
+  hd.parseTermReplies('\x1b[6;0;0t', st); assert.deepEqual(st.cell, antes, 'una celda de 0×0 (terminal que no sabe) se ignora');
+  hd.parseTermReplies('\x1b[6;4000;9t', st); assert.deepEqual(st.cell, antes, 'una medida absurda también');
+  assert.equal(hd.parseTermReplies('\x1b[A\x1b[B hola', st), '\x1b[A\x1b[B hola', 'las teclas normales no se tocan');
+});

@@ -264,3 +264,70 @@ test('clic en [Image #N] abre la imagen en el visor; arrastrar o hacer clic en o
     await h.waitFor(/\[Image #1\] abierta en el visor/, 'aviso en la barra');
   } finally { await h.close(); }
 });
+
+// ───────────── imágenes reales (Sixel) en el hover ─────────────
+const sixelFixture = () => {
+  const root = tmp('hopdeck-ui-sixel-');
+  const png = makePNG(80, 40, (x, y) => [x * 3, y * 6, 120, 255]).toString('base64');
+  const fx = makeFixture(root, [alpha({ first: '[Image #1] mira esta imagen', image: png })]);
+  const lineas = ['M [Image #1] marca', 'a'.repeat(70), 'b'.repeat(70), 'c'.repeat(70), 'd'.repeat(70), 'e'.repeat(70), 'f'.repeat(70)].join('\r\n');
+  return { root, fx, lineas, log: path.join(root, 'sixel.log') };
+};
+const leerSixel = (log) => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)) : []);
+const abrirChatConImagen = async (h) => {
+  await h.waitFor(/Sesión dos/, 'lista');
+  const uno = h.find('Sesión uno'); h.mouse(0, 5, uno.y); h.mouse(0, 5, uno.y, 'm');
+  await h.waitFor(/M \[Image #1\] marca/, 'chat con la marca', 20000);
+  return h.find('[Image #1]', 37);
+};
+
+test('Sixel: la imagen se dibuja justo en el hueco del cuadro, tapa el texto de debajo y al quitar el cursor el chat se repinta', opts, async () => {
+  const { root, fx, lineas, log } = sixelFixture();
+  const h = launchHub({ root, fx, cwd: fx.cwds.alpha, env: { HOPDECK_SIXEL: '1', HOPDECK_SIXEL_LOG: log, FAKE_PRINT: lineas } });
+  try {
+    const m = await abrirChatConImagen(h);
+    await h.waitFor(/a{70}/, 'el texto completo del chat');
+    assert.equal(leerSixel(log).length, 0, 'sin cursor sobre la marca no se dibuja nada');
+
+    h.mouse(35, m.x + 2, m.y);
+    await h.waitFor(/╭─ \[Image #1\]/, 'el cuadro del hover');
+    for (let i = 0; i < 100 && !leerSixel(log).length; i++) await h.sleep(50);
+    const dibujos = leerSixel(log); assert.equal(dibujos.length, 1, 'la imagen se dibuja una sola vez');
+    const { row, col, data } = dibujos[0];
+    const [, , , W, H] = data.match(/^\x1bP[0-9;]*q"(\d+);(\d+);(\d+);(\d+)/);
+    assert.deepEqual([+W, +H], [240, 120], 'una imagen de 80×40 se amplía hasta 24×6 celdas de 10×20 píxeles');
+
+    await h.waitFor(/╭─ \[Image #1\] ─{8,}╮/, 'el cuadro con el ancho de la imagen (ya no el aviso de carga)');
+    const borde = h.find('╭─ [Image #1]'); const ancho = h.lines()[borde.y - 1].slice(borde.x - 1).match(/^╭[^╮]*╮/)[0].length - 2;
+    assert.equal(ancho, +W / 10, 'el cuadro tiene exactamente el ancho de la imagen en celdas');
+    assert.equal(row, borde.y + 1, 'la imagen empieza en la fila justo debajo del borde superior');
+    assert.equal(col, borde.x + 1, 'y en la columna justo después del borde izquierdo');
+    assert.doesNotMatch(h.screen(), /a{70}/, 'el hueco tapa el texto del chat que había debajo');
+    assert.doesNotMatch(h.screen(), /▀/, 'sin imagen de bloques: es la imagen real');
+
+    h.mouse(35, 3, 5);                                 // el cursor sale de la marca
+    await h.waitGone(/╭─ \[Image #1\]/, 'el cuadro desaparece');
+    await h.waitFor(/a{70}/, 'el texto del chat vuelve a pintarse donde estaba la imagen');
+    await h.waitFor(/f{70}/, 'y también el de más abajo');
+    assert.equal(leerSixel(log).length, 1, 'y no se dibuja nada más');
+  } finally { await h.close(); }
+});
+
+test('Sixel: se activa si el terminal contesta que lo admite, y HOPDECK_SIXEL=0 lo apaga', opts, async () => {
+  for (const apagado of [false, true]) {
+    const { root, fx, lineas, log } = sixelFixture();
+    const h = launchHub({ root, fx, cwd: fx.cwds.alpha, env: { HOPDECK_SIXEL_LOG: log, FAKE_PRINT: lineas, ...(apagado ? { HOPDECK_SIXEL: '0' } : {}) } });
+    try {
+      await h.waitFor(/Sesión dos/, 'lista');
+      h.write('\x1b[?62;4;22c\x1b[6;20;10t');          // lo que contestaría Windows Terminal: "admito Sixel" y "una celda mide 10×20"
+      await h.sleep(300);
+      assert.doesNotMatch(h.screen(), /62;4;22c|6;20;10t/, 'la respuesta del terminal no llega a la pantalla como si fueran teclas');
+      const m = await abrirChatConImagen(h);
+      h.mouse(35, m.x + 2, m.y);
+      await h.waitFor(/╭─ \[Image #1\]/, 'el cuadro del hover');
+      await h.sleep(600);
+      if (apagado) { assert.equal(leerSixel(log).length, 0, 'con HOPDECK_SIXEL=0 no hay Sixel aunque el terminal lo admita'); assert.match(h.screen(), /▀/, 'se usa la vista de bloques'); }
+      else { assert.equal(leerSixel(log).length, 1, 'tras la respuesta del terminal se usa la imagen real'); assert.doesNotMatch(h.screen(), /▀/); }
+    } finally { await h.close(); }
+  }
+});
