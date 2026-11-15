@@ -535,3 +535,87 @@ test('normalizeKeys: las teclas F1–F5 de la consola de Linux (Node 18 en Windo
   assert.equal(hd.normalizeKeys('a\x1b[[Ab\x1b[B'), 'a\x1bOPb\x1b[B', 'dentro de un bloque con otras teclas');
   for (const k of ['\x1bOP', '\x1b[11~', '\x1b[A', '\x1b[1;5A', 'hola', '\x1b[[F']) assert.equal(hd.normalizeKeys(k), k, 'lo demás no se toca: ' + JSON.stringify(k));
 });
+
+// ───────────── historial real: primer mensaje con imagen, duplicados y marcas ─────────────
+const linea = (o) => JSON.stringify(o) + '\n';
+const usuario = (texto, extra = {}) => ({ type: 'user', cwd: '/tmp/x', message: { role: 'user', content: texto }, ...extra });
+
+test('readSession: una conversación cuyo primer mensaje lleva una imagen (línea enorme) y sin título SÍ se lista', () => {
+  const d = tmp('hopdeck-big-'); const f = path.join(d, 's1.jsonl');
+  const imagen = 'A'.repeat(250 * 1024); // un JPEG en base64 de ~250 KB, como en un historial real
+  fs.writeFileSync(f, linea({ type: 'mode' }) + linea({ type: 'attachment', pad: 'x'.repeat(2000) }) +
+    linea(usuario([{ type: 'text', text: '[Image #1] actualmente la carga al ingresar se demora' }, { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imagen } }])) +
+    linea({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text: 'ok' }] } }));
+  const s = hd.readSession(f);
+  assert.ok(s, 'se lista (antes se descartaba: el primer mensaje caía fuera de los primeros 64 KB)');
+  assert.match(s.title, /^\[Image #1\] actualmente la carga/);
+  assert.equal(s.cwd, '/tmp/x');
+});
+
+test('readSession: lee hasta 4 MB de cabecera, y un archivo sin mensajes de usuario no se queda leyendo sin fin', () => {
+  const d = tmp('hopdeck-cap-');
+  const lejos = path.join(d, 'lejos.jsonl');
+  fs.writeFileSync(lejos, Array.from({ length: 30 }, () => linea({ type: 'attachment', pad: 'x'.repeat(100 * 1024) })).join('') + linea(usuario('mensaje tras 3 MB de relleno')));
+  assert.equal((hd.readSession(lejos) || {}).title, 'mensaje tras 3 MB de relleno', 'lo encuentra a ~3 MB');
+  const vacio = path.join(d, 'vacio.jsonl');
+  fs.writeFileSync(vacio, Array.from({ length: 60 }, () => linea({ type: 'attachment', pad: 'x'.repeat(100 * 1024) })).join('')); // ~6 MB, sin usuario
+  const t = Date.now();
+  assert.equal(hd.readSession(vacio), null, 'sin mensajes de usuario ni títulos: se descarta');
+  assert.ok(Date.now() - t < 4000, 'y sin leer el archivo entero');
+});
+
+test('readSession: los caracteres de varios bytes no se cortan en el límite de un bloque de lectura', () => {
+  const d = tmp('hopdeck-utf-'); const texto = 'ñandú 日本語 🙂 fin';
+  for (let relleno = 131072 - 80; relleno <= 131072 - 20; relleno++) { // todas las alineaciones posibles respecto al bloque de 128 KB
+    const f = path.join(d, `u${relleno}.jsonl`);
+    const meta = JSON.stringify({ type: 'attachment', pad: '' }); const pad = 'x'.repeat(relleno - Buffer.byteLength(meta) - 1);
+    fs.writeFileSync(f, JSON.stringify({ type: 'attachment', pad }) + '\n' + linea(usuario(texto)));
+    assert.equal((hd.readSession(f) || {}).title, texto, `relleno ${relleno}`);
+  }
+});
+
+test('caché: una caché de una versión anterior se ignora (el arreglo del lector llega a quien ya tenía caché)', () => {
+  const d = tmp('hopdeck-cv-'); const f = path.join(d, 's.jsonl'); const cacheFile = path.join(d, 'cache.json');
+  fs.writeFileSync(f, linea(usuario('hola mundo')));
+  const st = fs.statSync(f);
+  fs.writeFileSync(cacheFile, JSON.stringify({ v: 1, files: { [f]: { m: st.mtimeMs, z: st.size, d: null } } })); // la versión antigua guardó "sin título"
+  const prev = process.env.HOPDECK_CACHE, mod = require.resolve('../lib/history.js');
+  process.env.HOPDECK_CACHE = cacheFile; delete require.cache[mod];
+  try { assert.equal((require(mod).readSession(f) || {}).title, 'hola mundo', 'ignora la caché v1 y vuelve a leer'); }
+  finally { if (prev === undefined) delete process.env.HOPDECK_CACHE; else process.env.HOPDECK_CACHE = prev; delete require.cache[mod]; }
+});
+
+test('extractImages: cada imagen cuenta una vez aunque Claude la guarde también en líneas internas', async () => {
+  const d = tmp('hopdeck-dup-'); const f = path.join(d, 's.jsonl'); const png = makePNG(2, 2, () => [9, 9, 9, 255]).toString('base64');
+  const contenido = [{ type: 'text', text: '[Image #1] mira' }, { type: 'image', source: { type: 'base64', media_type: 'image/png', data: png } }];
+  fs.writeFileSync(f, linea(usuario(contenido)) + linea({ type: 'api-request-blob', message: { role: 'user', content: contenido } }));
+  const imgs = await hd.extractImages(f);
+  assert.equal(imgs.length, 1, 'una sola, sin duplicado');
+  assert.equal(imgs[0].n, 1);
+  assert.ok(await hd.findImageByNumber(f, 1));
+});
+
+test('imageMarkerAt: encuentra la marca [Image #N] bajo el cursor con caracteres anchos delante y espacios no separables', async () => {
+  const { Terminal } = require('@xterm/headless');
+  const term = new Terminal({ cols: 60, rows: 6, allowProposedApi: true });
+  await new Promise((r) => term.write('日本語 [Image #2] fin\r\n[Image #3] nbsp\r\nsin marca [Image] #4\r\n', r));
+  assert.deepEqual(hd.imageMarkerAt(term, 0, 8), { n: 2, x: 7 }, 'tras tres caracteres de ancho 2, la marca empieza en la columna 7');
+  assert.deepEqual(hd.imageMarkerAt(term, 0, 7), { n: 2, x: 7 }, 'primera celda');
+  assert.deepEqual(hd.imageMarkerAt(term, 0, 16), { n: 2, x: 7 }, 'última celda');
+  assert.equal(hd.imageMarkerAt(term, 0, 17), null, 'justo después');
+  assert.equal(hd.imageMarkerAt(term, 0, 6), null, 'justo antes');
+  assert.deepEqual(hd.imageMarkerAt(term, 1, 3), { n: 3, x: 0 }, 'con espacio no separable');
+  assert.equal(hd.imageMarkerAt(term, 2, 12), null, 'texto parecido pero no es una marca');
+  term.dispose();
+});
+
+test('shownSession: un chat nuevo sin enlazar solo toma una conversación creada después de abrirlo', async () => {
+  const saved = { ...hd.S };
+  try {
+    const cwd = fx.cwds.alpha;
+    // t0 en el futuro: ninguna conversación puede ser posterior, aunque otra prueba haya tocado la fecha de alguna hace un instante
+    assert.equal(await hd.shownSession({ sid: null, cwd, t0: Date.now() + 3600e3 }), undefined, 'si no hay ninguna posterior, no inventa una (podría ser otra conversación con la misma numeración de imágenes)');
+    const s = await hd.shownSession({ sid: null, cwd, t0: Date.now() - 10 * 3600e3 });
+    assert.ok(s && s.id, 'con una conversación posterior a la apertura, la toma');
+  } finally { Object.assign(hd.S, saved); }
+});

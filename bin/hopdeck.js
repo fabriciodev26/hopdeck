@@ -953,9 +953,36 @@ async function shownSession(x) {
   if (!sess) {
     await reloadAsync(null, true);
     const p = S.projects.find((q) => q.cwd === x.cwd);
-    sess = p && p.sessions[0];
+    // un chat nuevo aún sin enlazar: solo vale una conversación creada después de abrirlo. Usar "la más reciente del proyecto"
+    // podía mostrar la imagen de OTRA conversación cuando coincidía el número
+    sess = p && p.sessions.find((q) => q.mtime >= (x.t0 || 0) - 2000);
   }
   return sess;
+}
+
+/** Texto de una fila del terminal virtual y la columna de cada carácter (los de ancho 2 ocupan dos celdas). */
+function rowChars(term, y) {
+  const b = term.buffer.active, line = b.getLine(b.viewportY + y), cols = []; let text = '';
+  if (!line) return { text, cols };
+  const cell = b.getNullCell();
+  for (let x = 0; x < term.cols; x++) {
+    const c = line.getCell(x, cell); if (!c) break;
+    if (c.getWidth() === 0) continue;
+    const ch = c.getChars() || ' ';
+    for (let i = 0; i < ch.length; i++) cols.push(x);
+    text += ch;
+  }
+  return { text, cols };
+}
+
+/** ¿Hay un "[Image #N]" bajo la columna `col` de la fila `y`? Devuelve { n, x } o null. Tolera espacios no separables y caracteres anchos antes de la marca. */
+function imageMarkerAt(term, y, col) {
+  const { text, cols } = rowChars(term, y);
+  for (const m of text.matchAll(/\[Image\s*#(\d+)\]/g)) {
+    const x0 = cols[m.index], x1 = cols[m.index + m[0].length - 1];
+    if (col >= x0 && col <= x1) return { n: +m[1], x: x0 };
+  }
+  return null;
 }
 
 async function openGalleryShown() {
@@ -999,9 +1026,8 @@ function hoverChat(sh, x, y) {
   const { SW, rw } = embedLayout(), x0 = SW ? SW + 2 : 1;
   let n = 0, at = null;
   if (sh.ready && x >= x0 && y >= 3) {
-    const b = sh.term.buffer.active, l = b.getLine(b.viewportY + (y - 3));
-    const txt = l ? l.translateToString(true) : '', col = x - x0;
-    for (const m of txt.matchAll(/\[Image #(\d+)\]/g)) if (col >= m.index && col < m.index + m[0].length) { n = +m[1]; at = { x: m.index, y: y - 3 }; break; }
+    const hit = imageMarkerAt(sh.term, y - 3, x - x0);
+    if (hit) { n = hit.n; at = { x: hit.x, y: y - 3 }; }
   }
   if (!n) { if (E.hover) { E.hover = null; scheduleRender(); } return; }
   const k = `${n}:${at.x}:${at.y}`;
@@ -1898,6 +1924,6 @@ else {
     readSession, buildProject, scan, scanAsync, finishScan, sortProjects, projectDirs,
     view, flatList, stripBlock, offerShortcut, SNIP, MARK_A, MARK_B, toggleProject, cacheLoad, selNorm,
     decodePNG, decodeImage, scaleBox, fitSize, halfBlocks, collectImages, extractImages,
-    editBuf, normalizeKeys, stripJsonc, wtCtrlV, fbNames, fbOpen, fbRows, sidebarMouse, gitBranch, linkChats, findImageByNumber: images.findImageByNumber,
+    editBuf, normalizeKeys, stripJsonc, wtCtrlV, fbNames, fbOpen, fbRows, sidebarMouse, gitBranch, imageMarkerAt, shownSession, linkChats, findImageByNumber: images.findImageByNumber,
   };
 }
