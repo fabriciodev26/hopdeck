@@ -169,7 +169,7 @@ Cada comando tiene **una sola forma**. Cualquier otra palabra, o una variante co
 | Sistema | Funciona con | Notas |
 |---|---|---|
 | **Windows** | PowerShell, CMD, Windows Terminal | Todas las funciones. Es donde más se ha probado. |
-| **macOS / Linux** | Cualquier terminal con color | Con `tmux` instalado usa paneles de tmux (la lista responde a la rueda y al clic, pero sin vista previa al pasar el cursor ni imágenes del chat); sin `tmux`, usa un terminal integrado con todas las funciones. |
+| **macOS / Linux** | Cualquier terminal con color | Usa el terminal integrado, con todas las funciones (vista previa al pasar el cursor, imágenes del chat). Si prefieres paneles de `tmux`, lanza `HOPDECK_TMUX=1 hopdeck` (la lista responde a la rueda y al clic, pero sin vista previa al pasar el cursor ni imágenes). |
 | **WSL** | Igual que Linux | Lee el historial de WSL, que es distinto del de Windows (ver [problemas frecuentes](#problemas-frecuentes)). |
 
 ## Configuración
@@ -200,7 +200,7 @@ Claves de `~/.hopdeck.json` que puedes editar a mano:
 | `maxImages` | Imágenes máximas por conversación en la galería | `200` |
 | `previewMsgs` | Mensajes mostrados en la vista previa | `12` |
 
-Otras variables: `HOPDECK_EMBED=1` fuerza el terminal integrado, `HOPDECK_NOTMUX=1` evita tmux y `HOPDECK_NOEMBED=1` lo desactiva; `HOPDECK_CONFIG` y `HOPDECK_CACHE` cambian las rutas de tus preferencias y de la caché.
+Otras variables: `HOPDECK_TMUX=1` usa paneles de tmux en Linux/macOS, `HOPDECK_EMBED=1` fuerza el terminal integrado, `HOPDECK_NOTMUX=1` evita tmux y `HOPDECK_NOEMBED=1` lo desactiva; `HOPDECK_CONFIG` y `HOPDECK_CACHE` cambian las rutas de tus preferencias y de la caché.
 
 </details>
 

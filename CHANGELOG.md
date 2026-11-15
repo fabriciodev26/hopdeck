@@ -2,6 +2,9 @@
 
 ## 1.2.4
 
+### Cambiado
+- **En Linux y macOS el terminal integrado es ahora el modo por defecto**, también con `tmux` instalado, para que la vista previa al pasar el cursor y las imágenes funcionen igual que en Windows. El modo tmux sigue disponible con `HOPDECK_TMUX=1` y se usa solo si el terminal integrado no está disponible.
+
 ### Nuevo
 - **Logotipo con el texto convertido a trazados** (Inter 800): se ve igual en cualquier equipo y en la página de npm, sin depender de la fuente instalada. Se añaden copias PNG en `docs/`.
 - **Imagen real al pasar el cursor por `[Image #N]`** en terminales con Sixel (Windows Terminal 1.22 o posterior, iTerm2, WezTerm, foot, Konsole…). Hopdeck pregunta al terminal si lo admite y, si es así, dibuja la imagen con todos sus píxeles dentro del cuadro del hover; el texto del chat que queda debajo se repinta al apartar el cursor. La vista previa es pequeña (como mucho 36×9 celdas) y en Windows Terminal se activa sin esperar la respuesta del terminal. Si no lo admite se mantiene la vista de bloques. `HOPDECK_SIXEL=1` lo fuerza y `HOPDECK_SIXEL=0` lo desactiva.

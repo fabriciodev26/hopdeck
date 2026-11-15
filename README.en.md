@@ -169,7 +169,7 @@ Each command has **one single form**. Any other word, or a variant such as `inst
 | System | Works with | Notes |
 |---|---|---|
 | **Windows** | PowerShell, CMD, Windows Terminal | All features. This is where it has been tested the most. |
-| **macOS / Linux** | Any terminal with color | With `tmux` installed it uses tmux panes (the list responds to the wheel and clicks, but no hover preview or chat images); without `tmux`, it uses a built-in terminal with every feature. |
+| **macOS / Linux** | Any terminal with color | It uses the built-in terminal, with every feature (hover preview, chat images). If you prefer `tmux` panes, run `HOPDECK_TMUX=1 hopdeck` (the list responds to the wheel and clicks, but no hover preview or chat images). |
 | **WSL** | Same as Linux | Reads WSL's history, which is separate from Windows' (see [troubleshooting](#troubleshooting)). |
 
 ## Configuration
@@ -200,7 +200,7 @@ Keys in `~/.hopdeck.json` you can edit by hand:
 | `maxImages` | Max images per conversation in the gallery | `200` |
 | `previewMsgs` | Messages shown in the preview | `12` |
 
-Other variables: `HOPDECK_EMBED=1` forces the built-in terminal, `HOPDECK_NOTMUX=1` avoids tmux and `HOPDECK_NOEMBED=1` disables it; `HOPDECK_CONFIG` and `HOPDECK_CACHE` change the paths of your preferences and the cache.
+Other variables: `HOPDECK_TMUX=1` uses tmux panes on Linux/macOS, `HOPDECK_EMBED=1` forces the built-in terminal, `HOPDECK_NOTMUX=1` avoids tmux and `HOPDECK_NOEMBED=1` disables it; `HOPDECK_CONFIG` and `HOPDECK_CACHE` change the paths of your preferences and the cache.
 
 </details>
 

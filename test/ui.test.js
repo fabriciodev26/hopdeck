@@ -186,7 +186,7 @@ test('modo tmux: la rueda mueve la lista y un clic abre la conversación', { ...
   const root = tmp('hopdeck-ui-tmux-'); const fx = makeFixture(root, [alpha()]);
   // sockets de tmux aislados (no tocan una sesión tuya abierta) y en una ruta corta: en macOS el socket admite ~104 caracteres
   const tmuxDir = fs.mkdtempSync(path.join('/tmp', 'hdt-'));
-  const h = launchHub({ root, fx, cwd: fx.cwds.alpha, env: { HOPDECK_EMBED: '', TMUX_TMPDIR: tmuxDir } });
+  const h = launchHub({ root, fx, cwd: fx.cwds.alpha, env: { HOPDECK_EMBED: '', HOPDECK_TMUX: '1', TMUX_TMPDIR: tmuxDir } });
   const marked = () => (h.lines().find((l) => l.includes('▌')) || '').slice(0, 40);
   try {
     await h.waitFor(/Sesión dos/, 'la lista en modo tmux', 40000);

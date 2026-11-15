@@ -1690,9 +1690,12 @@ async function run() {
   if (!SIDEBAR && process.env.HOPDECK_INSIDE) { console.log(T.inside); return; }
   if (!SIDEBAR) await offerShortcut(); // primera vez: ¿quieres que `claude` abra Hopdeck?
   if (!SIDEBAR) {
-    const preferTmux = !WIN && !process.env.HOPDECK_NOTMUX && !process.env.HOPDECK_EMBED && hasTmux();
-    if (preferTmux) return bootstrap();
+    // Por defecto se usa el terminal integrado (vista previa al pasar el cursor, imágenes). tmux solo con HOPDECK_TMUX=1,
+    // o como alternativa si el terminal integrado no está disponible.
+    const tmuxOk = !WIN && !process.env.HOPDECK_NOTMUX && !process.env.HOPDECK_EMBED && hasTmux();
+    if (tmuxOk && process.env.HOPDECK_TMUX) return bootstrap();
     if (!process.env.HOPDECK_NOEMBED) { E.deps = loadDeps(); EMBED = !!E.deps; }
+    if (!EMBED && tmuxOk) return bootstrap();
   }
   process.on('exit', () => { if (active) { try { process.stdout.write('\x1b[?1000l\x1b[?1003l\x1b[?1006l\x1b[?25h\x1b[?1049l'); } catch { /* */ } } });
   process.on('SIGTERM', () => quit(0));
