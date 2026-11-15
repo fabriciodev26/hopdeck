@@ -525,3 +525,13 @@ test('findClaude: recuerda dónde está y vuelve a buscar si el archivo desapare
     assert.equal(hd.findClaude('prog-memoria').toLowerCase(), f2.toLowerCase(), 'y lo encuentra en el sitio nuevo');
   } finally { process.env.PATH = prev; }
 });
+
+test('normalizeKeys: las teclas F1–F5 de la consola de Linux (Node 18 en Windows) se convierten a las de xterm', () => {
+  assert.equal(hd.normalizeKeys('\x1b[[A'), '\x1bOP', 'F1');
+  assert.equal(hd.normalizeKeys('\x1b[[B'), '\x1bOQ', 'F2');
+  assert.equal(hd.normalizeKeys('\x1b[[C'), '\x1bOR', 'F3');
+  assert.equal(hd.normalizeKeys('\x1b[[D'), '\x1bOS', 'F4');
+  assert.equal(hd.normalizeKeys('\x1b[[E'), '\x1b[15~', 'F5');
+  assert.equal(hd.normalizeKeys('a\x1b[[Ab\x1b[B'), 'a\x1bOPb\x1b[B', 'dentro de un bloque con otras teclas');
+  for (const k of ['\x1bOP', '\x1b[11~', '\x1b[A', '\x1b[1;5A', 'hola', '\x1b[[F']) assert.equal(hd.normalizeKeys(k), k, 'lo demás no se toca: ' + JSON.stringify(k));
+});

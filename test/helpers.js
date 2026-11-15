@@ -6,7 +6,8 @@ const path = require('path');
 /** Quita secuencias ANSI para comparar texto plano. */
 const strip = (s) => s.replace(/\x1b\[[0-9;?<]*[A-Za-z~]/g, '').replace(/\x1b\][^\x07]*\x07/g, '');
 
-const tmp = (prefix) => fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+// Se resuelve la ruta real: en macOS /var es un enlace a /private/var, y el programa trabaja con la ruta real del proceso.
+const tmp = (prefix) => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
 
 /**
  * Crea un historial de Claude Code falso:  <root>/claude/projects/<proyecto>/<id>.jsonl

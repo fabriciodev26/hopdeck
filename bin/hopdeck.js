@@ -18,7 +18,7 @@ const hist = require('../lib/history');
 const { CONFIG_DIR, CACHE_FILE, textOf, isType, cacheLoad, cacheSave, readSession, decodeDir, projectDirs, buildProject, beginScan, endScan } = hist;
 const images = require('../lib/images');
 const { collectImages, decodePNG, decodeImage, scaleBox, fitSize, halfBlocks } = images;
-const { parseKeys, KEYMAP, printable, editBuf } = require('../lib/keys');
+const { parseKeys, KEYMAP, printable, editBuf, normalizeKeys } = require('../lib/keys');
 const { stripJsonc, wtCtrlV, wtSettingsFile } = require('../lib/windows-terminal');
 
 let VERSION = '0.0.0';
@@ -1626,7 +1626,7 @@ async function run() {
   }, 20000);
   process.stdin.on('data', (buf) => {
     if (!active) return;
-    let s = buf.toString('utf8');
+    let s = normalizeKeys(buf.toString('utf8'));
     if (EMBED) {
       s = s.replace(/\x1b\[<(\d+);(\d+);(\d+)([Mm])/g, (m, b, x, y, t) => { onMouse(+b, +x, +y, t); return ''; });
       if (!s) return;
@@ -1655,7 +1655,8 @@ function doctor() {
   const ok = (m) => console.log(`  ${C.ok}✔${R} ${m}`);
   const bad = (m, hint) => console.log(`  ${C.warn}✘${R} ${m}${hint ? `\n      ${C.dim}${hint}${R}` : ''}`);
   console.log(`\n  ${C.brand}${C.bold}» Hop${R}${C.text}${C.bold}deck doctor${R}  ${C.dim}v${VERSION}${R}\n`);
-  ok(`Node ${process.version} · ${process.platform} ${process.arch}`);
+  if (parseInt(process.versions.node, 10) < 22) bad(T.dcNodeOld(process.version), T.dcNodeOldHint);
+  else ok(`Node ${process.version} · ${process.platform} ${process.arch}`);
   const n = projectDirs().length;
   const histDir = shortPath(path.join(CONFIG_DIR, 'projects'));
   n ? ok(T.dcHist(n, histDir)) : bad(T.dcNoHist(histDir), T.dcNoHistHint);
@@ -1897,6 +1898,6 @@ else {
     readSession, buildProject, scan, scanAsync, finishScan, sortProjects, projectDirs,
     view, flatList, stripBlock, offerShortcut, SNIP, MARK_A, MARK_B, toggleProject, cacheLoad, selNorm,
     decodePNG, decodeImage, scaleBox, fitSize, halfBlocks, collectImages, extractImages,
-    editBuf, stripJsonc, wtCtrlV, fbNames, fbOpen, fbRows, sidebarMouse, gitBranch, linkChats, findImageByNumber: images.findImageByNumber,
+    editBuf, normalizeKeys, stripJsonc, wtCtrlV, fbNames, fbOpen, fbRows, sidebarMouse, gitBranch, linkChats, findImageByNumber: images.findImageByNumber,
   };
 }

@@ -10,7 +10,7 @@
 **Español** · [English](README.en.md)
 
 [![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-blue.svg)](LICENSE)
-[![Node](https://img.shields.io/badge/node-%E2%89%A518-brightgreen.svg)](package.json)
+[![Node](https://img.shields.io/badge/node-%E2%89%A522-brightgreen.svg)](package.json)
 
 Escribe `claude` en tu terminal y **elige en qué proyecto y conversación seguir**, sin salir y sin hacer `cd`.
 La lista de proyectos queda a la izquierda y la conversación a la derecha.
@@ -33,7 +33,7 @@ Hopdeck te enseña **todos tus proyectos y conversaciones en una sola pantalla**
 
 **Necesitas**
 
-- [Node.js](https://nodejs.org) 18 o superior.
+- [Node.js](https://nodejs.org) 22 o superior.
 - [Claude Code](https://claude.com/claude-code) instalado (el comando `claude` debe funcionar en tu terminal).
 - Una terminal con color. En Windows se recomienda **Windows Terminal**.
 

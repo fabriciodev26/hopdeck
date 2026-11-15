@@ -10,7 +10,7 @@
 [Español](README.md) · **English**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Node](https://img.shields.io/badge/node-%E2%89%A518-brightgreen.svg)](package.json)
+[![Node](https://img.shields.io/badge/node-%E2%89%A522-brightgreen.svg)](package.json)
 
 Type `claude` in your terminal and **pick which project and conversation to continue**, without leaving and without `cd`.
 The project list stays on the left and the conversation on the right.
@@ -33,7 +33,7 @@ Hopdeck shows **all your projects and conversations on one screen**, with previe
 
 **You need**
 
-- [Node.js](https://nodejs.org) 18 or newer.
+- [Node.js](https://nodejs.org) 22 or newer.
 - [Claude Code](https://claude.com/claude-code) installed (the `claude` command must work in your terminal).
 - A terminal with color. On Windows, **Windows Terminal** is recommended.
 

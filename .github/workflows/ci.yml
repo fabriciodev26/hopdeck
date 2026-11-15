@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        node: [18, 22]
+        node: [22, 24] # Node 22 es el mínimo: en Windows, Node 18 y 20 no entregan los eventos de ratón
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:

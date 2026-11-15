@@ -178,7 +178,8 @@ const cp = require('child_process');
 const tmuxOk = (() => { try { return cp.spawnSync('tmux', ['-V'], { stdio: 'ignore' }).status === 0; } catch { return false; } })();
 test('modo tmux: la rueda mueve la lista y un clic abre la conversación', { ...opts, skip: opts.skip || (process.platform === 'win32' && 'tmux no existe en Windows') || (!tmuxOk && 'tmux no está instalado') }, async () => {
   const root = tmp('hopdeck-ui-tmux-'); const fx = makeFixture(root, [alpha()]);
-  const tmuxDir = path.join(root, 'tmux'); fs.mkdirSync(tmuxDir); // sockets de tmux aislados: no tocan una sesión tuya abierta
+  // sockets de tmux aislados (no tocan una sesión tuya abierta) y en una ruta corta: en macOS el socket admite ~104 caracteres
+  const tmuxDir = fs.mkdtempSync(path.join('/tmp', 'hdt-'));
   const h = launchHub({ root, fx, cwd: fx.cwds.alpha, env: { HOPDECK_EMBED: '', TMUX_TMPDIR: tmuxDir } });
   const marked = () => (h.lines().find((l) => l.includes('▌')) || '').slice(0, 40);
   try {
@@ -193,5 +194,6 @@ test('modo tmux: la rueda mueve la lista y un clic abre la conversación', { ...
   } finally {
     cp.spawnSync('tmux', ['-L', 'hopdeck', 'kill-server'], { stdio: 'ignore', env: { ...process.env, TMUX_TMPDIR: tmuxDir } });
     await h.close();
+    fs.rmSync(tmuxDir, { recursive: true, force: true });
   }
 });

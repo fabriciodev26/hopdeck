@@ -3,7 +3,7 @@
 ¡Gracias por querer ayudar! Algunas pautas breves:
 
 1. **Abre un issue** antes de un cambio grande, para acordar el enfoque.
-2. Requisitos: Node.js 18 o superior.
+2. Requisitos: Node.js 22 o superior.
    ```bash
    git clone https://github.com/fabriciodev26/hopdeck.git
    cd hopdeck

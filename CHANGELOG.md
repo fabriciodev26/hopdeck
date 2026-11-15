@@ -23,6 +23,8 @@
 - `notify-send` recibe `--` antes del mensaje para que un texto que empiece por `-` no se tome como opción.
 
 ### Corregido
+- **Requisito: Node.js 22 o superior.** En Windows, Node 18 y 20 no entregan al programa los eventos de ratón (hover, clics y rueda), así que no se pueden soportar. `hopdeck doctor` avisa si tu Node es anterior.
+- **Teclas F1–F5 con Node 18 en Windows:** llegaban con la forma de la consola de Linux (`ESC [ [ A`…) y se reenviaban al chat como texto. Ahora se reconocen (también en la consola real de Linux).
 - **Ratón en el modo tmux** (el que se usa por defecto en macOS, Linux y WSL con tmux): la lista no respondía a la rueda ni a los clics, porque tmux solo reenvía el ratón a los paneles que lo piden. Ahora la rueda mueve la lista y un clic despliega o abre la conversación (también en el selector de carpetas y en el salto rápido). `F3` lo apaga.
 - **Lentitud en WSL:** la rama de git se leía en cada dibujo (unos 4 ms cada vez desde `/mnt/c`) y `claude` se buscaba en todo el `PATH` cada vez que abrías un chat (hasta ~120 ms con las rutas de Windows). Ahora la rama se guarda 3 s y la ubicación de `claude` se recuerda.
 - Teclas desconocidas (`Supr`, F-teclas…) ya no insertan caracteres basura en las cajas de texto.
