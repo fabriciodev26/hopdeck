@@ -456,3 +456,72 @@ test('offerShortcut: pregunta una vez, respeta la respuesta y nunca pregunta si 
     assert.equal(a.n, 0);
   } finally { if (prevPrompt === undefined) delete process.env.HOPDECK_NOPROMPT; else process.env.HOPDECK_NOPROMPT = prevPrompt; hd.CFG.shortcutAsked = false; }
 });
+
+// ───────────── rendimiento y ratón del modo tmux ─────────────
+const silenciar = (f) => { const w = process.stdout.write; process.stdout.write = () => true; try { return f(); } finally { process.stdout.write = w; } }; // la interfaz dibuja en stdout
+
+test('sidebarMouse: la rueda mueve la selección y un clic despliega el proyecto (modo tmux)', () => {
+  const saved = { ...hd.S };
+  try {
+    Object.assign(hd.S, { projects: hd.scan(), c: 0, coff: 0, query: '', fb: null, qs: null, help: false, prompt: null });
+    hd.S.open = hd.S.projects[0].key;
+    silenciar(() => {
+      hd.sidebarMouse(65, 5, 5, 'M', 30); assert.equal(hd.S.c, 3, 'rueda abajo: tres filas');
+      hd.sidebarMouse(64, 5, 5, 'M', 30); assert.equal(hd.S.c, 0, 'rueda arriba: vuelve');
+      hd.sidebarMouse(64, 5, 5, 'M', 30); assert.equal(hd.S.c, 0, 'no se sale por arriba');
+      const L = hd.flatList(), idx = L.findIndex((e) => e.t === 'p' && !e.open);
+      hd.sidebarMouse(0, 5, 3 + idx - hd.S.coff, 'M', 30);
+      const sel = hd.flatList()[hd.S.c]; // al desplegar este proyecto el que estaba abierto se contrae, y la fila clicada sube de posición
+      assert.ok(sel.t === 'p' && sel.p.key === L[idx].p.key, 'el clic deja marcada la fila del proyecto');
+      assert.equal(hd.S.open, L[idx].p.key, 'y lo despliega');
+      const antes = [hd.S.c, hd.S.open];
+      hd.sidebarMouse(0, 5, 4, 'm', 30);   // soltar el botón
+      hd.sidebarMouse(32, 5, 4, 'M', 30);  // arrastrar
+      hd.sidebarMouse(2, 5, 4, 'M', 30);   // botón derecho
+      hd.sidebarMouse(0, 5, 1, 'M', 30);   // cabecera
+      hd.sidebarMouse(0, 5, 29, 'M', 30);  // pie
+      assert.deepEqual([hd.S.c, hd.S.open], antes, 'todo eso se ignora');
+    });
+  } finally { Object.assign(hd.S, saved); }
+});
+
+test('sidebarMouse: en el selector de carpetas un clic entra en la carpeta', () => {
+  const d = tmp('hopdeck-fbm-'); fs.mkdirSync(path.join(d, 'carpeta-a'));
+  const saved = { ...hd.S };
+  try {
+    silenciar(() => {
+      hd.fbOpen(d);
+      const idx = hd.fbRows().findIndex((r) => r.k === 'dir' && r.n === 'carpeta-a');
+      assert.ok(idx >= 0);
+      hd.sidebarMouse(0, 5, 3 + idx - hd.S.fb.off, 'M', 30);
+      assert.equal(hd.S.fb.dir, path.join(d, 'carpeta-a'), 'el clic entra en la carpeta');
+    });
+  } finally { Object.assign(hd.S, saved); }
+});
+
+test('gitBranch: guarda el resultado unos segundos (en WSL leer /mnt/c cuesta ~4 ms por dibujo)', () => {
+  const d = tmp('hopdeck-git-'); fs.mkdirSync(path.join(d, '.git'));
+  fs.writeFileSync(path.join(d, '.git', 'HEAD'), 'ref: refs/heads/principal\n');
+  assert.equal(hd.gitBranch(d), 'principal');
+  fs.writeFileSync(path.join(d, '.git', 'HEAD'), 'ref: refs/heads/otra\n');
+  assert.equal(hd.gitBranch(d), 'principal', 'dentro de los 3 s no vuelve a leer el archivo');
+  const now = Date.now; Date.now = () => now() + 4000;
+  try { assert.equal(hd.gitBranch(d), 'otra', 'pasado el tiempo, sí'); } finally { Date.now = now; }
+  assert.equal(hd.gitBranch(path.join(d, 'no-existe')), '', 'sin git devuelve vacío');
+});
+
+test('findClaude: recuerda dónde está y vuelve a buscar si el archivo desaparece', () => {
+  const prev = process.env.PATH, win = process.platform === 'win32', exe = win ? 'prog-memoria.cmd' : 'prog-memoria';
+  const crear = (dir) => { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, exe), win ? '@echo off\r\n' : '#!/bin/sh\n'); if (!win) fs.chmodSync(path.join(dir, exe), 0o755); return path.join(dir, exe); };
+  const d1 = path.join(tmp('hopdeck-fc-'), 'a'), d2 = path.join(tmp('hopdeck-fc-'), 'b');
+  try {
+    const f1 = crear(d1); process.env.PATH = d1 + path.delimiter + prev;
+    assert.equal(hd.findClaude('prog-memoria').toLowerCase(), f1.toLowerCase());
+    process.env.PATH = prev; // aunque el PATH cambie, mientras el archivo exista se devuelve el recordado
+    assert.equal(hd.findClaude('prog-memoria').toLowerCase(), f1.toLowerCase(), 'lo recuerda');
+    fs.rmSync(f1);
+    assert.equal(hd.findClaude('prog-memoria'), null, 'si desaparece, busca de nuevo y no inventa');
+    const f2 = crear(d2); process.env.PATH = d2 + path.delimiter + prev;
+    assert.equal(hd.findClaude('prog-memoria').toLowerCase(), f2.toLowerCase(), 'y lo encuentra en el sitio nuevo');
+  } finally { process.env.PATH = prev; }
+});

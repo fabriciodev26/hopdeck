@@ -81,12 +81,19 @@ function toggleProject(p, field) {
   saveCfg(); sortProjects(S.projects);
 }
 
+// Se llama en cada dibujo; en WSL leer un archivo de /mnt/c cuesta unos 4 ms, así que el resultado se guarda unos segundos.
+const BRANCH = new Map();
 function gitBranch(cwd) {
+  const now = Date.now(), hit = BRANCH.get(cwd);
+  if (hit && now - hit.t < 3000) return hit.v;
+  let v = '';
   try {
     const h = fs.readFileSync(path.join(cwd, '.git', 'HEAD'), 'utf8').trim();
     const m = h.match(/^ref: refs\/heads\/(.+)$/);
-    return m ? m[1] : h.slice(0, 7);
-  } catch { return ''; }
+    v = m ? m[1] : h.slice(0, 7);
+  } catch { /* sin git */ }
+  BRANCH.set(cwd, { t: now, v });
+  return v;
 }
 
 function scan() {
@@ -1252,10 +1259,33 @@ function wheelChat(sh, up, x, y) {
   } else scrollSession(sh, up ? 3 : -3);
 }
 
+/** Modos de ratón que se piden al terminal: clics, formato SGR y (solo en el modo embebido, que lo usa para el hover) el movimiento. */
+const mouseModes = (on) => (EMBED ? ['1000', '1003', '1006'] : ['1000', '1006']).map((m) => `\x1b[?${m}${on ? 'h' : 'l'}`).join('');
+
 function setMouse(on) {
   E.mouse = on;
-  process.stdout.write(on ? '\x1b[?1000h\x1b[?1003h\x1b[?1006h' : '\x1b[?1000l\x1b[?1003l\x1b[?1006l');
+  process.stdout.write(mouseModes(on));
   render();
+}
+
+/**
+ * Ratón en el modo tmux (la lista es su propio panel): rueda para moverse y clic para abrir. tmux solo reenvía los
+ * eventos a un panel cuyo programa los ha pedido; sin esto, los clics solo cambiaban el foco del panel.
+ */
+function sidebarMouse(b, x, y, type, rows = process.stdout.rows || 30) {
+  if (b & 64) { // rueda
+    const d = (b & 1) === 0 ? -3 : 3;
+    if (S.fb) S.fb.i = clamp(S.fb.i + d, 0, Math.max(0, fbRows().length - 1));
+    else if (S.qs) S.qs.i = clamp(S.qs.i + d, 0, Math.max(0, qsItems().length - 1));
+    else S.c = clamp(S.c + d, 0, Math.max(0, flatList().length - 1));
+    return render();
+  }
+  if (type !== 'M' || (b & 3) !== 0 || (b & 32)) return; // solo clic izquierdo (no soltar, ni arrastrar, ni otros botones)
+  if (S.help || S.prompt !== null || y < 3 || y > rows - 3) return; // las filas de la lista van de la 3 a rows-3
+  if (S.qs) { const i = S.qs.off + (y - 3); if (qsItems()[i]) { S.qs.i = i; return onKeyTree('\r'); } return; }
+  if (S.fb) { const i = S.fb.off + (y - 3); if (fbRows()[i]) { S.fb.i = i; fbActivate(); } return; }
+  const i = S.coff + (y - 3);
+  if (flatList()[i]) { S.c = i; return onKeyTree('\r'); }
 }
 
 function onMouse(b, x, y, type) {
@@ -1424,12 +1454,12 @@ function render() {
 let active = false;
 function enter() {
   if (active) return; active = true; invalidate();
-  process.stdout.write('\x1b[?1049h\x1b[?25l\x1b[2J' + (EMBED && E.mouse ? '\x1b[?1000h\x1b[?1003h\x1b[?1006h' : ''));
+  process.stdout.write('\x1b[?1049h\x1b[?25l\x1b[2J' + ((EMBED || SIDEBAR) && E.mouse ? mouseModes(true) : ''));
   process.stdin.setRawMode(true); process.stdin.resume();
 }
 function leave() {
   if (!active) return; active = false;
-  process.stdout.write((EMBED ? '\x1b[?1000l\x1b[?1003l\x1b[?1006l' : '') + '\x1b[?25h\x1b[?1049l' + R);
+  process.stdout.write(((EMBED || SIDEBAR) ? mouseModes(false) : '') + '\x1b[?25h\x1b[?1049l' + R);
   try { process.stdin.setRawMode(false); } catch { /* */ }
   process.stdin.pause();
 }
@@ -1449,14 +1479,17 @@ function load(keepKey) {
 const extraArgs = [];
 
 /** Busca el ejecutable real de claude en el PATH (no depende de funciones del shell). */
-/** Busca un programa en el PATH (por defecto `claude`). */
+/** Busca un programa en el PATH (por defecto `claude`). Recuerda el resultado mientras el archivo siga existiendo. */
+const FOUND = new Map();
 function findClaude(name = 'claude') {
+  const known = FOUND.get(name);
+  if (known) { try { if (fs.statSync(known).isFile()) return known; } catch { /* ya no está: se busca otra vez */ } FOUND.delete(name); }
   const exts = WIN ? (process.env.PATHEXT || '.EXE;.CMD;.BAT').split(';').concat(['']) : [''];
   for (const dir of (process.env.PATH || '').split(path.delimiter)) {
     if (!dir) continue;
     for (const ext of exts) {
       const f = path.join(dir, name + ext.toLowerCase());
-      try { if (fs.statSync(f).isFile()) return f; } catch { /* siguiente */ }
+      try { if (fs.statSync(f).isFile()) { FOUND.set(name, f); return f; } } catch { /* siguiente */ }
     }
   }
   return null;
@@ -1607,6 +1640,11 @@ async function run() {
         E.focus = E.hideSide ? 'right' : 'left'; return embedResize();
       }
     }
+    if (SIDEBAR) { // modo tmux: eventos de ratón de la lista y F3 para apagar/encender el ratón
+      s = s.replace(/\x1b\[<(\d+);(\d+);(\d+)([Mm])/g, (m, b, x, y, t) => { sidebarMouse(+b, +x, +y, t); return ''; });
+      if (!s) return;
+      if (s === '\x1bOR' || s === '\x1b[13~') { CFG.mouse = !E.mouse; saveCfg(); return setMouse(!E.mouse); }
+    }
     if (EMBED && E.focus === 'right' && E.sessions.has(E.shown)) return embedInput(s);
     for (const k of parseKeys(s)) (SIDEBAR || EMBED ? onKeyTree : onKey)(k);
   });
@@ -1689,6 +1727,8 @@ function stripBlock(txt) {
 }
 
 function targets() {
+  // HOPDECK_PROFILES (rutas separadas como las del PATH): perfiles a usar en lugar de los detectados. Pensado para las pruebas.
+  if (process.env.HOPDECK_PROFILES) return process.env.HOPDECK_PROFILES.split(path.delimiter).filter(Boolean).map((file) => ({ file, kind: /\.ps1$/i.test(file) ? 'pwsh' : /\.fish$/i.test(file) ? 'fish' : 'posix' }));
   const list = []; const h = os.homedir();
   const add = (file, kind) => { if (!list.some((t) => t.file === file)) list.push({ file, kind }); };
   const sh = process.env.SHELL || '';
@@ -1857,6 +1897,6 @@ else {
     readSession, buildProject, scan, scanAsync, finishScan, sortProjects, projectDirs,
     view, flatList, stripBlock, offerShortcut, SNIP, MARK_A, MARK_B, toggleProject, cacheLoad, selNorm,
     decodePNG, decodeImage, scaleBox, fitSize, halfBlocks, collectImages, extractImages,
-    editBuf, stripJsonc, wtCtrlV, fbNames, linkChats, findImageByNumber: images.findImageByNumber,
+    editBuf, stripJsonc, wtCtrlV, fbNames, fbOpen, fbRows, sidebarMouse, gitBranch, linkChats, findImageByNumber: images.findImageByNumber,
   };
 }

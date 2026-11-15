@@ -154,7 +154,7 @@ It always starts at `~`. Recently used folders appear on top (`↻ recent`).
 | System | Works with | Notes |
 |---|---|---|
 | **Windows** | PowerShell, CMD, Windows Terminal | All features. This is where it has been tested the most. |
-| **macOS / Linux** | Any terminal with color | With `tmux` installed it uses tmux panes (no hover preview or chat images); without `tmux`, it uses a built-in terminal with every feature. |
+| **macOS / Linux** | Any terminal with color | With `tmux` installed it uses tmux panes (the list responds to the wheel and clicks, but no hover preview or chat images); without `tmux`, it uses a built-in terminal with every feature. |
 | **WSL** | Same as Linux | Reads WSL's history, which is separate from Windows' (see [troubleshooting](#troubleshooting)). |
 
 ## Configuration

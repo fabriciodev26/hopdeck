@@ -159,7 +159,8 @@ test('scroll del historial del chat: la rueda lo recorre y la barra muestra la p
 test('primer arranque: pregunta si `claude` debe abrir Hopdeck, recuerda "No" y no toca el perfil', opts, async () => {
   const root = tmp('hopdeck-ui-offer-'); const fx = makeFixture(root, [alpha()]);
   const cfgFile = path.join(root, 'cfg.json');
-  const h = launchHub({ root, fx, cwd: fx.cwds.alpha, env: { HOPDECK_NOPROMPT: '' } });
+  // HOPDECK_PROFILES fija un perfil de shell de prueba: así la prueba no depende de si TU perfil ya tiene el atajo instalado
+  const h = launchHub({ root, fx, cwd: fx.cwds.alpha, env: { HOPDECK_NOPROMPT: '', HOPDECK_PROFILES: path.join(root, 'perfil-de-prueba.sh') } });
   try {
     await h.waitFor(/abra Hopdeck/, 'pregunta del primer arranque', 40000);
     assert.match(h.screen(), /\[Enter\] Sí/, 'muestra las opciones');
@@ -170,4 +171,27 @@ test('primer arranque: pregunta si `claude` debe abrir Hopdeck, recuerda "No" y 
     assert.equal(cfg.shortcutAsked, true, 'queda guardado que ya se preguntó');
     h.write('q');
   } finally { await h.close(); }
+});
+
+// ───────────── modo tmux: el ratón de la lista ─────────────
+const cp = require('child_process');
+const tmuxOk = (() => { try { return cp.spawnSync('tmux', ['-V'], { stdio: 'ignore' }).status === 0; } catch { return false; } })();
+test('modo tmux: la rueda mueve la lista y un clic abre la conversación', { ...opts, skip: opts.skip || (process.platform === 'win32' && 'tmux no existe en Windows') || (!tmuxOk && 'tmux no está instalado') }, async () => {
+  const root = tmp('hopdeck-ui-tmux-'); const fx = makeFixture(root, [alpha()]);
+  const tmuxDir = path.join(root, 'tmux'); fs.mkdirSync(tmuxDir); // sockets de tmux aislados: no tocan una sesión tuya abierta
+  const h = launchHub({ root, fx, cwd: fx.cwds.alpha, env: { HOPDECK_EMBED: '', TMUX_TMPDIR: tmuxDir } });
+  const marked = () => (h.lines().find((l) => l.includes('▌')) || '').slice(0, 40);
+  try {
+    await h.waitFor(/Sesión dos/, 'la lista en modo tmux', 40000);
+    assert.match(marked(), /alpha/, 'al empezar está marcado el proyecto');
+    const dos = h.find('Sesión dos'), uno = h.find('Sesión uno');
+    h.mouse(65, 6, dos.y);                            // rueda abajo sobre la lista
+    for (let i = 0; i < 100 && !/Sesión dos/.test(marked()); i++) await h.sleep(50);
+    assert.match(marked(), /Sesión dos/, 'la rueda baja la selección tres filas');
+    h.mouse(0, 6, uno.y); h.mouse(0, 6, uno.y, 'm');  // clic en "Sesión uno"
+    await h.waitFor(/FAKE CLAUDE/, 'el clic abre la conversación en el panel derecho', 20000);
+  } finally {
+    cp.spawnSync('tmux', ['-L', 'hopdeck', 'kill-server'], { stdio: 'ignore', env: { ...process.env, TMUX_TMPDIR: tmuxDir } });
+    await h.close();
+  }
 });

@@ -154,7 +154,7 @@ Empieza siempre en `~`. Las carpetas que usaste hace poco aparecen arriba (`↻ 
 | Sistema | Funciona con | Notas |
 |---|---|---|
 | **Windows** | PowerShell, CMD, Windows Terminal | Todas las funciones. Es donde más se ha probado. |
-| **macOS / Linux** | Cualquier terminal con color | Con `tmux` instalado usa paneles de tmux (sin vista previa al pasar el cursor ni imágenes del chat); sin `tmux`, usa un terminal integrado con todas las funciones. |
+| **macOS / Linux** | Cualquier terminal con color | Con `tmux` instalado usa paneles de tmux (la lista responde a la rueda y al clic, pero sin vista previa al pasar el cursor ni imágenes del chat); sin `tmux`, usa un terminal integrado con todas las funciones. |
 | **WSL** | Igual que Linux | Lee el historial de WSL, que es distinto del de Windows (ver [problemas frecuentes](#problemas-frecuentes)). |
 
 ## Configuración
