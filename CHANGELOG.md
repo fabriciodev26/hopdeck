@@ -1,6 +1,6 @@
 # Cambios
 
-## 1.2.5
+## 1.2.6
 
 ### Mejorado
 - **Lista más legible:** el número de conversaciones de cada proyecto destaca y se separa de «hace cuánto» con un punto; los proyectos plegados se atenúan y el desplegado lleva la flecha en color.
@@ -8,6 +8,8 @@
 - **Barra de ayuda contextual:** muestra solo las teclas que sirven para lo seleccionado (proyecto: desplegar y fijar; conversación: reanudar y renombrar).
 - **Pantalla de bienvenida** con las teclas principales cuando no hay nada abierto.
 - **Icono** del proyecto (`docs/icon.svg` y `docs/icon.png`) para el avatar del repositorio.
+
+## 1.2.5
 
 ### Cambiado
 - **En Linux y macOS el terminal integrado es ahora el modo por defecto**, también con `tmux` instalado, para que la vista previa al pasar el cursor y las imágenes funcionen igual que en Windows. El modo tmux sigue disponible con `HOPDECK_TMUX=1` y se usa solo si el terminal integrado no está disponible.
