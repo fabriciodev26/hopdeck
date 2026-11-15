@@ -1,5 +1,14 @@
 # Cambios
 
+## 1.2.1
+
+### Corregido
+- **Conversaciones que no aparecían en la lista** (y por tanto tampoco mostraban sus imágenes al pasar el cursor): Hopdeck solo leía los primeros 64 KB de cada archivo para sacar el título. Si el primer mensaje llevaba una imagen (cientos de KB) y Claude aún no había guardado un título, la conversación se descartaba. Ahora lee el principio del archivo por bloques, hasta 4 MB, hasta encontrar el primer mensaje.
+- **Las cachés guardadas con la versión anterior se reconstruyen**, para que ese arreglo llegue también a quien ya tenía la lista cacheada.
+- **Imágenes duplicadas en la galería:** Claude Code guarda cada imagen otra vez en una línea interna (`api-request-blob`). Ya no se cuentan dos veces.
+- **Hover de imagen en un chat nuevo:** si todavía no se había enlazado con su conversación, podía mostrar la imagen de otra conversación del mismo proyecto cuando coincidía el número. Ahora solo toma una conversación creada después de abrir el chat.
+- **Detección de `[Image #N]`:** calcula bien la columna con caracteres anchos delante (emoji, CJK) y acepta espacios no separables.
+
 ## 1.2.0 · primera versión pública
 
 ### Nuevo
