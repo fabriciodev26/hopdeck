@@ -53,9 +53,9 @@ Listo. También puedes probarlo sin instalar: `npx hopdeck`.
 - `claude` solo → abre Hopdeck.
 - `claude <cualquier argumento>` (`-p`, `--resume`, `--model`…) → funciona exactamente igual que siempre.
 
-Puedes decir que no y usar siempre `hopdeck`. Si cambias de idea: `hopdeck install`.
+Puedes decir que no y usar siempre `hopdeck`. Si cambias de idea: `hopdeck shortcut on`.
 
-**Quitarlo:** `hopdeck uninstall`. Para saltarlo una sola vez: `HOPDECK_SKIP=1 claude`.
+**Quitar solo el atajo:** `hopdeck shortcut off`. **Desinstalar Hopdeck por completo:** `hopdeck uninstall` (pregunta antes; quita el atajo, tus preferencias y la caché, y el programa). Para saltar el atajo una sola vez: `HOPDECK_SKIP=1 claude`.
 
 **¿Algo no va bien?** Ejecuta `hopdeck doctor`: revisa tu instalación y dice cómo arreglar lo que falte.
 
@@ -155,13 +155,14 @@ Empieza siempre en `~`. Las carpetas que usaste hace poco aparecen arriba (`↻ 
 | Comando | Qué hace |
 |---|---|
 | `hopdeck` | Abre Hopdeck |
-| `hopdeck install` / `hopdeck uninstall` | Instala o quita el atajo para que `claude` abra Hopdeck |
+| `hopdeck shortcut on` / `hopdeck shortcut off` | Instala o quita el atajo para que `claude` abra Hopdeck |
+| `hopdeck uninstall` | **Desinstala Hopdeck por completo**: el atajo, tus preferencias y la caché, y el programa. Pregunta antes (sin terminal, usa `--yes`). No toca tu historial de Claude Code |
 | `hopdeck doctor` | Revisa tu instalación y dice cómo arreglar lo que falte |
 | `hopdeck --list` | Lista los proyectos en texto plano |
 | `hopdeck --version` | Muestra la versión |
 | `hopdeck --model opus` | Lo que empiece por `-` se pasa a `claude` al abrir chats |
 
-Cada comando tiene **una sola forma**. Cualquier otra palabra, o una variante como `--uninstall`, `desinstalar` o `unistall`, da un error que sugiere el comando correcto (`uninstall`) y no abre Hopdeck.
+Cada comando tiene **una sola forma**. Cualquier otra palabra, o una variante como `install`, `--uninstall`, `desinstalar` o `unistall`, da un error que sugiere el comando correcto y no abre Hopdeck ni hace nada.
 
 ## Compatibilidad
 
@@ -206,7 +207,7 @@ Otras variables: `HOPDECK_EMBED=1` fuerza el terminal integrado, `HOPDECK_NOTMUX
 
 - **No envía nada a internet.** Sin telemetría, sin analítica, sin peticiones de red. Todo ocurre en tu equipo.
 - Lee tu historial local de Claude Code y lanza el `claude` que ya tienes. No toca tu sesión ni tus credenciales.
-- Solo escribe sus preferencias y su caché (en tu carpeta de usuario), el bloque de `hopdeck install` en tu perfil de shell y, si renombras una conversación, el título de esa conversación.
+- Solo escribe sus preferencias y su caché (en tu carpeta de usuario), el bloque de `hopdeck shortcut on` en tu perfil de shell y, si renombras una conversación, el título de esa conversación.
 
 Más detalles, y cómo avisar de un problema de seguridad: [SECURITY.md](SECURITY.md).
 
@@ -226,7 +227,7 @@ Empieza siempre por `hopdeck doctor`.
 
 **No puedo seleccionar texto con el ratón.** Pulsa `F3` para apagar el ratón de Hopdeck, o mantén `Shift` mientras arrastras.
 
-**Quiero que `claude` vuelva a ser el de siempre.** `hopdeck uninstall`, o `HOPDECK_SKIP=1 claude` para saltarlo una vez.
+**Quiero que `claude` vuelva a ser el de siempre.** `hopdeck shortcut off`, o `HOPDECK_SKIP=1 claude` para saltarlo una vez.
 
 **Se ve mal en mi terminal.** Prueba `HOPDECK_THEME=light` (fondo claro) o `NO_COLOR=1`.
 

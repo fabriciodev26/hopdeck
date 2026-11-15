@@ -53,9 +53,9 @@ Done. You can also try it without installing: `npx hopdeck`.
 - `claude` alone → opens Hopdeck.
 - `claude <any argument>` (`-p`, `--resume`, `--model`…) → works exactly as usual.
 
-You can say no and always use `hopdeck`. If you change your mind: `hopdeck install`.
+You can say no and always use `hopdeck`. If you change your mind: `hopdeck shortcut on`.
 
-**Remove it:** `hopdeck uninstall`. To skip it once: `HOPDECK_SKIP=1 claude`.
+**Remove only the shortcut:** `hopdeck shortcut off`. **Uninstall Hopdeck completely:** `hopdeck uninstall` (asks first; removes the shortcut, your preferences and cache, and the program). To skip the shortcut once: `HOPDECK_SKIP=1 claude`.
 
 **Something wrong?** Run `hopdeck doctor`: it checks your setup and tells you how to fix whatever is missing.
 
@@ -155,13 +155,14 @@ It always starts at `~`. Recently used folders appear on top (`↻ recent`).
 | Command | What it does |
 |---|---|
 | `hopdeck` | Opens Hopdeck |
-| `hopdeck install` / `hopdeck uninstall` | Installs or removes the shortcut so that `claude` opens Hopdeck |
+| `hopdeck shortcut on` / `hopdeck shortcut off` | Installs or removes the shortcut so that `claude` opens Hopdeck |
+| `hopdeck uninstall` | **Uninstalls Hopdeck completely**: the shortcut, your preferences and cache, and the program. Asks first (without a terminal, use `--yes`). Does not touch your Claude Code history |
 | `hopdeck doctor` | Checks your setup and tells you how to fix whatever is missing |
 | `hopdeck --list` | Lists the projects as plain text |
 | `hopdeck --version` | Shows the version |
 | `hopdeck --model opus` | Anything starting with `-` is passed to `claude` when opening chats |
 
-Each command has **one single form**. Any other word, or a variant such as `--uninstall`, `desinstalar` or `unistall`, gives an error that suggests the right command (`uninstall`) and does not open Hopdeck.
+Each command has **one single form**. Any other word, or a variant such as `install`, `--uninstall`, `desinstalar` or `unistall`, gives an error that suggests the right command and neither opens Hopdeck nor does anything.
 
 ## Compatibility
 
@@ -206,7 +207,7 @@ Other variables: `HOPDECK_EMBED=1` forces the built-in terminal, `HOPDECK_NOTMUX
 
 - **Nothing is sent to the internet.** No telemetry, no analytics, no network requests. Everything happens on your machine.
 - It reads your local Claude Code history and launches the `claude` you already have. It does not touch your session or your credentials.
-- It only writes its preferences and cache (in your home folder), the `hopdeck install` block in your shell profile and, if you rename a conversation, that conversation's title.
+- It only writes its preferences and cache (in your home folder), the `hopdeck shortcut on` block in your shell profile and, if you rename a conversation, that conversation's title.
 
 More details, and how to report a security problem: [SECURITY.md](SECURITY.md).
 
@@ -226,7 +227,7 @@ Always start with `hopdeck doctor`.
 
 **I can't select text with the mouse.** Press `F3` to turn Hopdeck's mouse off, or hold `Shift` while dragging.
 
-**I want `claude` back to normal.** `hopdeck uninstall`, or `HOPDECK_SKIP=1 claude` to skip it once.
+**I want `claude` back to normal.** `hopdeck shortcut off`, or `HOPDECK_SKIP=1 claude` to skip it once.
 
 **It looks wrong in my terminal.** Try `HOPDECK_THEME=light` (light background) or `NO_COLOR=1`.
 

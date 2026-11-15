@@ -202,3 +202,32 @@ test('modo tmux: la rueda mueve la lista y un clic abre la conversación', { ...
     fs.rmSync(tmuxDir, { recursive: true, force: true });
   }
 });
+
+// ───────────── desinstalar: la pregunta en una terminal real ─────────────
+test('hopdeck uninstall en una terminal: pregunta, Enter cancela sin tocar nada y "s" desinstala', opts, async () => {
+  const ptyMod = require('@lydell/node-pty');
+  const root = tmp('hopdeck-ui-un-'); const perfil = path.join(root, 'perfil.sh'), cfg = path.join(root, 'cfg.json'), cache = path.join(root, 'cache.json');
+  const crear = () => { fs.writeFileSync(perfil, 'export A=1\n# >>> hopdeck >>>\nclaude() { :; }\n# <<< hopdeck <<<\n'); fs.writeFileSync(cfg, '{"pinned":["/x"]}'); fs.writeFileSync(cache, '{"v":2,"files":{}}'); };
+  const env = { ...process.env, HOPDECK_CONFIG: cfg, HOPDECK_CACHE: cache, HOPDECK_PROFILES: perfil, HOPDECK_LANG: 'es', HOPDECK_NOPROMPT: '1', HOPDECK_NO_NPM: '1', COLORTERM: 'truecolor' };
+  const strip = (x) => x.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '').replace(/\x1b\][^\x07]*\x07/g, '');
+  const ejecutar = (respuesta) => new Promise((resolve) => {
+    const p = ptyMod.spawn(process.execPath, [path.join(__dirname, '..', 'bin', 'hopdeck.js'), 'uninstall'], { name: 'xterm-256color', cols: 110, rows: 30, cwd: root, env });
+    let out = '', enviada = false;
+    p.onData((d) => { out += d; if (!enviada && /\[s\] Sí, desinstalar/.test(strip(out))) { enviada = true; setTimeout(() => { try { p.write(respuesta); } catch { /* */ } }, 100); } });
+    p.onExit(() => resolve(strip(out)));
+    setTimeout(() => { try { p.kill(); } catch { /* */ } resolve('TIEMPO AGOTADO\n' + strip(out)); }, 25000);
+  });
+
+  crear();
+  const cancelado = await ejecutar('\r');                         // Enter = no
+  assert.match(cancelado, /¿Desinstalar Hopdeck por completo\?/, 'hace la pregunta');
+  assert.match(cancelado, /Se quitará el atajo/, 'explica qué se quita');
+  assert.match(cancelado, /Cancelado: no se ha quitado nada/, 'Enter cancela');
+  assert.ok(fs.readFileSync(perfil, 'utf8').includes('>>> hopdeck >>>') && fs.existsSync(cfg) && fs.existsSync(cache), 'y no toca nada');
+
+  const hecho = await ejecutar('s');                              // s = sí
+  assert.match(hecho, /Atajo quitado/); assert.match(hecho, /Preferencias y caché borradas/); assert.match(hecho, /Hopdeck se ha desinstalado/);
+  assert.ok(!fs.readFileSync(perfil, 'utf8').includes('>>> hopdeck >>>'), 'quita el atajo');
+  assert.ok(fs.readFileSync(perfil, 'utf8').startsWith('export A=1'), 'sin tocar el resto del perfil');
+  assert.ok(!fs.existsSync(cfg) && !fs.existsSync(cache), 'y borra las preferencias y la caché');
+});

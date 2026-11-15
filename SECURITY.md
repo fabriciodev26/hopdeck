@@ -6,7 +6,8 @@
 - Escribe solo en tu equipo:
   - `~/.hopdeck.json` (preferencias: proyectos fijados, ocultos, recientes…) y `~/.hopdeck-cache.json` (índice de títulos y primeros mensajes, con permisos solo para tu usuario).
   - Una carpeta temporal privada con las imágenes cuando abres la galería con `o` (se borra al salir).
-  - Con `hopdeck install`, un bloque marcado en el perfil de tu shell (`~/.bashrc`, `~/.zshrc`, perfil de PowerShell…). Antes guarda una copia `<perfil>.hopdeck-backup` (la primera, sin sobrescribirla). `hopdeck uninstall` quita el bloque.
+  - Con `hopdeck shortcut on`, un bloque marcado en el perfil de tu shell (`~/.bashrc`, `~/.zshrc`, perfil de PowerShell…). Antes guarda una copia `<perfil>.hopdeck-backup` (la primera, sin sobrescribirla). `hopdeck shortcut off` quita el bloque.
+  - `hopdeck uninstall` (siempre con tu confirmación, o `--yes`) quita ese bloque, borra tus preferencias y la caché, y ejecuta `npm uninstall -g hopdeck`. No toca tu historial de Claude Code ni las copias de seguridad de los perfiles.
   - Al renombrar una conversación (`R`), añade una línea `custom-title` al final de su archivo `.jsonl`, igual que hace Claude Code.
 - Ejecuta el comando `claude` que encuentre en tu `PATH`. Si alguien puede cambiar tu `PATH`, puede cambiar qué se ejecuta (como con cualquier programa).
 - Lo que se muestra en pantalla procedente del historial (títulos, mensajes, rutas) se limpia de caracteres de control y secuencias de escape antes de dibujarse.

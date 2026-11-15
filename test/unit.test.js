@@ -622,10 +622,10 @@ test('shownSession: un chat nuevo sin enlazar solo toma una conversación creada
 
 // ───────────── comandos: una sola forma para cada uno; lo demás da error con sugerencia ─────────────
 test('commandName / suggestCommand: solo cuenta la forma exacta, y las variantes y erratas sugieren el comando', () => {
-  for (const [entrada, esperado] of [['install', 'install'], ['uninstall', 'uninstall'], ['UNINSTALL', 'uninstall'], ['doctor', 'doctor'], ['help', 'help']])
+  for (const [entrada, esperado] of [['shortcut', 'shortcut'], ['uninstall', 'uninstall'], ['UNINSTALL', 'uninstall'], ['doctor', 'doctor'], ['help', 'help']])
     assert.equal(hd.commandName(entrada), esperado, entrada);
-  for (const no of ['--uninstall', '--install', 'desinstalar', 'remove', 'version', 'unistall', '--model', '', undefined]) assert.equal(hd.commandName(no), null, `no es un comando: ${no}`);
-  for (const [entrada, sugerido] of [['unistall', 'uninstall'], ['--unistall', 'uninstall'], ['--uninstall', 'uninstall'], ['desinstalar', 'uninstall'], ['remove', 'uninstall'], ['instal', 'install'], ['instalar', 'install'], ['doctr', 'doctor'], ['ayuda', 'help']])
+  for (const no of ['install', '--uninstall', '--install', 'desinstalar', 'remove', 'version', 'unistall', '--model', '', undefined]) assert.equal(hd.commandName(no), null, `no es un comando: ${no}`);
+  for (const [entrada, sugerido] of [['unistall', 'uninstall'], ['--unistall', 'uninstall'], ['--uninstall', 'uninstall'], ['desinstalar', 'uninstall'], ['remove', 'uninstall'], ['install', 'shortcut on'], ['instalar', 'shortcut on'], ['--install', 'shortcut on'], ['shortcu', 'shortcut'], ['doctr', 'doctor'], ['ayuda', 'help']])
     assert.equal(hd.suggestCommand(entrada), sugerido, entrada);
   assert.equal(hd.suggestCommand('xyzxyzxyz'), null, 'si no se parece a nada, no inventa');
   // las opciones de claude no pueden confundirse con un comando: se pasan tal cual
@@ -633,28 +633,52 @@ test('commandName / suggestCommand: solo cuenta la forma exacta, y las variantes
     assert.equal(hd.suggestCommand(flag), null, `opción de claude: ${flag}`);
 });
 
-test('línea de comandos: solo "install" y "uninstall" tocan el perfil; cualquier otra forma da error con sugerencia', () => {
+// entorno aislado para ejecutar la línea de comandos real sin tocar tus perfiles, tus preferencias ni tu npm
+const cli = () => {
   const cp = require('child_process'); const d = tmp('hopdeck-cli-');
-  const perfil = path.join(d, 'perfil.sh'); fs.writeFileSync(perfil, 'export A=1\n');
-  const env = { ...process.env, HOPDECK_CONFIG: path.join(d, 'cfg.json'), HOPDECK_CACHE: path.join(d, 'cache.json'), HOPDECK_PROFILES: perfil, HOPDECK_LANG: 'es', HOPDECK_NOPROMPT: '1', NO_COLOR: '1' };
+  const perfil = path.join(d, 'perfil.sh'), cfg = path.join(d, 'cfg.json'), cache = path.join(d, 'cache.json');
+  fs.writeFileSync(perfil, 'export A=1\n'); fs.writeFileSync(cfg, '{"pinned":["/x"]}'); fs.writeFileSync(cache, '{"v":2,"files":{}}');
+  const env = { ...process.env, HOPDECK_CONFIG: cfg, HOPDECK_CACHE: cache, HOPDECK_PROFILES: perfil, HOPDECK_LANG: 'es', HOPDECK_NOPROMPT: '1', HOPDECK_NO_NPM: '1', NO_COLOR: '1' };
   const run = (...args) => cp.spawnSync(process.execPath, [path.join(__dirname, '..', 'bin', 'hopdeck.js'), ...args], { env, encoding: 'utf8', timeout: 30000 });
-  const conBloque = () => fs.readFileSync(perfil, 'utf8').includes(hd.MARK_A);
+  return { d, perfil, cfg, cache, env, run, conBloque: () => fs.readFileSync(perfil, 'utf8').includes(hd.MARK_A) };
+};
 
-  assert.equal(run('install').status, 0); assert.ok(conBloque(), 'install instala el atajo');
-  for (const otra of ['--uninstall', 'desinstalar', 'remove', '--unistall', 'unistall']) {
+test('línea de comandos: "shortcut on|off" solo toca el atajo; cualquier otra forma da error con sugerencia y no hace nada', () => {
+  const { perfil, cfg, run, conBloque } = cli();
+  assert.equal(run('shortcut', 'on').status, 0); assert.ok(conBloque(), 'shortcut on instala el atajo');
+  for (const [otra, sug] of [['--uninstall', 'uninstall'], ['desinstalar', 'uninstall'], ['remove', 'uninstall'], ['--unistall', 'uninstall'], ['unistall', 'uninstall'], ['install', 'shortcut on'], ['--install', 'shortcut on'], ['instalar', 'shortcut on']]) {
     const r = run(otra);
     assert.equal(r.status, 2, `${otra}: sale con error`);
     assert.match(r.stderr, new RegExp(`Comando desconocido: "${otra}"`), `${otra}: lo dice`);
-    assert.match(r.stderr, /¿Quisiste decir "uninstall"\?/, `${otra}: sugiere el único comando`);
-    assert.ok(conBloque(), `${otra}: NO toca el perfil`);
+    assert.ok(r.stderr.includes(`¿Quisiste decir "${sug}"?`), `${otra}: sugiere "${sug}"`);
+    assert.ok(conBloque() && fs.existsSync(cfg), `${otra}: NO toca el perfil ni las preferencias`);
     assert.doesNotMatch(r.stdout, /Hopdeck|Claude/i, `${otra}: no abre ni lista nada`);
   }
-  assert.equal(run('uninstall').status, 0); assert.ok(!conBloque(), 'uninstall lo quita');
-  assert.equal(run('--install').status, 2, '--install tampoco: la única forma es install');
-  assert.ok(!conBloque());
+  for (const mal of [['shortcut'], ['shortcut', 'encender'], ['shortcut', 'on', 'extra']]) { const r = run(...mal); assert.equal(r.status, 2, mal.join(' ')); assert.match(r.stderr, /Uso: hopdeck shortcut on/); }
+  assert.equal(run('shortcut', 'off').status, 0); assert.ok(!conBloque(), 'shortcut off lo quita');
+  assert.ok(fs.existsSync(cfg), 'y no borra nada más');
+  assert.ok(fs.readFileSync(perfil, 'utf8').startsWith('export A=1'), 'conserva el resto del perfil');
 
   const flag = run('--model', 'opus'); // lo que empieza por - y no se parece a un comando sigue pasando a claude (sin terminal imprime la lista)
   assert.equal(flag.status, 0, 'las opciones de claude no se rechazan'); assert.doesNotMatch(flag.stderr, /desconocido/);
   assert.match(run('--version').stdout, /^\d+\.\d+\.\d+/, '--version sigue funcionando');
   assert.equal(run('help').status, 0, 'help sigue funcionando');
+});
+
+test('hopdeck uninstall: desinstala de verdad (atajo, preferencias y caché) y sin terminal exige --yes', () => {
+  const { perfil, cfg, cache, run, conBloque } = cli();
+  run('shortcut', 'on'); assert.ok(conBloque());
+
+  const sinYes = run('uninstall');
+  assert.equal(sinYes.status, 2, 'sin terminal no puede preguntar');
+  assert.match(sinYes.stderr, /--yes/);
+  assert.ok(conBloque() && fs.existsSync(cfg) && fs.existsSync(cache), 'y no borra nada');
+  const rara = run('uninstall', '--todo'); assert.equal(rara.status, 2, 'un argumento desconocido tampoco'); assert.match(rara.stderr, /desconocido/);
+
+  const r = run('uninstall', '--yes');
+  assert.equal(r.status, 0);
+  assert.match(r.stdout, /Atajo quitado/); assert.match(r.stdout, /Preferencias y caché borradas/); assert.match(r.stdout, /npm uninstall -g hopdeck/);
+  assert.ok(!conBloque(), 'quita el atajo'); assert.ok(!fs.existsSync(cfg) && !fs.existsSync(cache), 'y borra las preferencias y la caché');
+  assert.ok(fs.readFileSync(perfil, 'utf8').startsWith('export A=1'), 'sin tocar el resto del perfil');
+  assert.ok(fs.existsSync(perfil + '.hopdeck-backup'), 'la copia de seguridad del perfil se conserva');
 });

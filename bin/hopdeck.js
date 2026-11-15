@@ -1695,7 +1695,7 @@ function doctor() {
   else bad(T.dcNone, WIN ? T.dcNoneWin : T.dcNoneUnix);
   let wrapped = false;
   for (const t of targets()) { try { if (fs.readFileSync(t.file, 'utf8').includes(MARK_A)) wrapped = true; } catch { /* */ } }
-  wrapped ? ok(T.dcShort) : bad(T.dcNoShort, findClaude('hopdeck') ? T.dcNoShortHint : T.dcNoCmdHint); // sin el comando en el PATH, "hopdeck install" no existe todavía
+  wrapped ? ok(T.dcShort) : bad(T.dcNoShort, findClaude('hopdeck') ? T.dcNoShortHint : T.dcNoCmdHint); // sin el comando en el PATH, "hopdeck shortcut on" no existe todavía
   ok(T.dcPrefs(shortPath(CFG_FILE), shortPath(CACHE_FILE)));
   if (process.env.WT_SESSION) { // dentro de Windows Terminal: Ctrl+V solo pega texto y no deja pegar imágenes
     const f = wtSettingsFile(); let st = null;
@@ -1817,6 +1817,34 @@ function install(remove, list = targets(), quiet = false) {
   return { done, baks };
 }
 
+/**
+ * Desinstala Hopdeck por completo: quita el atajo del perfil, borra sus preferencias y su caché y ejecuta `npm uninstall -g hopdeck`.
+ * Pregunta antes (sin terminal exige --yes). No toca el historial de Claude Code ni las copias de seguridad de tus perfiles.
+ * HOPDECK_NO_NPM=1 no ejecuta npm (para las pruebas). Devuelve el código de salida.
+ */
+async function uninstallAll({ yes = false, list = targets() } = {}) {
+  const tty = process.stdin.isTTY && process.stdout.isTTY;
+  if (!yes) {
+    if (!tty) { console.error(`${C.warn}${T.unNeedYes}${R}`); return 2; }
+    process.stdout.write(`\n  ${C.text}${C.bold}${T.unQ}${R}\n  ${C.dim}${T.unInfo}${R}\n\n  ${C.accent}${T.unKeys}${R}\n`);
+    const ans = await readKey((k) => (/^[sSyY]$/.test(k) ? 'yes' : /^[nN]$/.test(k) || k === '\r' || k === '\n' || k === '\x1b' ? 'no' : undefined));
+    if (ans !== 'yes') { console.log(`\n  ${C.dim}${T.unCancel}${R}`); return 0; }
+  }
+  const ok = (m) => console.log(`  ${C.ok}✓${R} ${m}`), note = (m) => console.log(`  ${C.dim}· ${m}${R}`);
+  console.log('');
+  const had = hasShortcut(list);
+  const r = install(true, list, true);
+  if (had && r.done.length) ok(T.unShortcutOff); else note(T.unNoShortcut);
+  for (const f of [CFG_FILE, CACHE_FILE, CACHE_FILE + '.tmp']) { try { fs.rmSync(f, { force: true }); } catch { /* */ } }
+  ok(T.unData);
+  if (process.env.HOPDECK_NO_NPM) { note(T.unSkipNpm); console.log(`\n  ${C.dim}${T.unDone}${R}`); return 0; }
+  const res = cp.spawnSync('npm uninstall -g hopdeck', { shell: true, stdio: 'inherit' }); // comando fijo, sin datos de fuera
+  if (res.status === 0 && !fs.existsSync(__filename)) ok(T.unProgram);
+  else console.log(`  ${C.warn}✗${R} ${T.unProgramFail(path.dirname(__dirname))}`);
+  console.log(`\n  ${C.dim}${T.unDone}${R}`);
+  return 0;
+}
+
 // ── Primer arranque: ofrecer que escribir `claude` abra Hopdeck ──
 const markAsked = () => { CFG.shortcutAsked = true; saveCfg(); };
 const hasShortcut = (list) => list.some((t) => { try { return fs.readFileSync(t.file, 'utf8').includes(MARK_A); } catch { return false; } });
@@ -1890,7 +1918,7 @@ function tutorial(afterInstall) {
     `${a}4${R} Al salir de Claude (${d}/exit${R}) vuelves aquí, sin abrir otra terminal`, '',
     `${d}/ buscar · r recargar · q salir${R}`,
     `${d}claude con argumentos (claude -p "...", claude --resume) funciona igual que siempre.${R}`,
-    `${d}Desinstalar: hopdeck uninstall${R}`,
+    `${d}Quitar el atajo: hopdeck shortcut off · Desinstalar todo: hopdeck uninstall${R}`,
   ] : [
     `${C.brand}${b}» Hop${R}${C.text}${b}deck${R}  ${d}v${VERSION}${R}`, '',
     afterInstall ? `${C.ok}Done.${R} Open a new terminal and type ${b}claude${R}.` : `Type ${b}hopdeck${R} (or just ${b}claude${R} if you installed the shortcut).`, '',
@@ -1900,16 +1928,16 @@ function tutorial(afterInstall) {
     `${a}4${R} When you exit Claude (${d}/exit${R}) you land back here — no new terminal needed`, '',
     `${d}/ search · r reload · q quit${R}`,
     `${d}claude with arguments (claude -p "...", claude --resume) works as usual.${R}`,
-    `${d}Uninstall: hopdeck uninstall${R}`,
+    `${d}Remove the shortcut: hopdeck shortcut off · Uninstall everything: hopdeck uninstall${R}`,
   ];
   console.log('\n' + L.map((x) => '  ' + x).join('\n') + '\n');
 }
 
 // ───────────────────────── entrada ─────────────────────────
-// ── Comandos: UNA sola forma para cada uno (install, uninstall, doctor, help). Lo demás no hace nada: da un error con una sugerencia ──
-const COMMANDS = ['install', 'uninstall', 'doctor', 'help'];
+// ── Comandos: UNA sola forma para cada uno (shortcut on|off, uninstall, doctor, help). Lo demás no hace nada: da un error con una sugerencia ──
+const COMMANDS = ['shortcut', 'uninstall', 'doctor', 'help'];
 // Palabras que alguien escribiría para lo mismo: no son comandos y no se ejecutan, solo sirven para sugerir el correcto
-const SYNONYMS = { desinstalar: 'uninstall', remove: 'uninstall', delete: 'uninstall', instalar: 'install', ayuda: 'help', diagnostico: 'doctor', version: '--version', list: '--list' };
+const SYNONYMS = { install: 'shortcut on', instalar: 'shortcut on', atajo: 'shortcut on', desinstalar: 'uninstall', remove: 'uninstall', delete: 'uninstall', ayuda: 'help', diagnostico: 'doctor', version: '--version', list: '--list' };
 /** Nombre de comando si `arg` es exactamente uno (sin guiones ni variantes); null si no. */
 const commandName = (arg) => (COMMANDS.includes(String(arg || '').toLowerCase()) ? String(arg).toLowerCase() : null);
 const editDistance = (a, b) => { const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]); for (let j = 1; j <= b.length; j++) d[0][j] = j; for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return d[a.length][b.length]; };
@@ -1933,8 +1961,14 @@ function main() {
     console.error(`${C.warn}${T.unknownCmd(cmd)}${R}${sug ? ' ' + T.didYouMean(sug) : ''}\n${C.dim}${T.cmdList}${R}`);
     process.exit(2);
   }
-  if (commandName(cmd) === 'install') { install(false); markAsked(); }
-  else if (commandName(cmd) === 'uninstall') { install(true); markAsked(); }
+  if (commandName(cmd) === 'shortcut') { // hopdeck shortcut on | off: solo el atajo de claude
+    if (rest.length !== 1 || !['on', 'off'].includes(rest[0])) { console.error(`${C.warn}${T.shortcutUsage}${R}`); process.exit(2); }
+    install(rest[0] === 'off'); markAsked();
+  }
+  else if (commandName(cmd) === 'uninstall') { // desinstalación completa: atajo, preferencias, caché y programa
+    if (rest.some((a) => a !== '--yes' && a !== '-y')) { console.error(`${C.warn}${T.unknownCmd(rest.find((a) => a !== '--yes' && a !== '-y'))}${R}\n${C.dim}${T.cmdList}${R}`); process.exit(2); }
+    uninstallAll({ yes: rest.length > 0 }).then((code) => process.exit(code), (e) => { console.error(e); process.exit(1); });
+  }
   else if (commandName(cmd) === 'help' || cmd === '--help' || cmd === '-h') tutorial(false);
   else if (cmd === '--version' || cmd === '-v') console.log(VERSION);
   else if (cmd === '--list') printList();
@@ -1958,7 +1992,7 @@ else {
   module.exports = {
     cw, strW, fit, clean, imageExt, exportImages, safeId, findClaude, install, backupProfile, ago, tidy, fuzzy, wrapText, parseKeys, KEYMAP, isType, T, S, CFG, E,
     readSession, buildProject, scan, scanAsync, finishScan, sortProjects, projectDirs,
-    view, flatList, stripBlock, offerShortcut, commandName, suggestCommand, SNIP, MARK_A, MARK_B, toggleProject, cacheLoad, selNorm,
+    view, flatList, stripBlock, offerShortcut, uninstallAll, commandName, suggestCommand, SNIP, MARK_A, MARK_B, toggleProject, cacheLoad, selNorm,
     decodePNG, decodeImage, scaleBox, fitSize, halfBlocks, collectImages, extractImages,
     editBuf, normalizeKeys, stripJsonc, wtCtrlV, fbNames, fbOpen, fbRows, sidebarMouse, gitBranch, imageMarkerAt, shownSession, linkChats, findImageByNumber: images.findImageByNumber,
   };
