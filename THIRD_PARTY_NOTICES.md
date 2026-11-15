@@ -11,6 +11,10 @@ y cada una conserva su propia licencia.
 
 Ninguna dependencia ejecuta scripts de instalación (`npm audit`: 0 vulnerabilidades conocidas a la fecha de la versión 1.2.0).
 
+## Tipografía del logotipo
+
+El texto de `docs/logo-*.svg` y `docs/logo-*.png` está convertido a trazados a partir de la fuente [Inter](https://rsms.me/inter/) (peso 800), con licencia SIL Open Font License 1.1, que permite este uso. No se distribuye la fuente.
+
 ## Marcas
 
 "Claude" y "Claude Code" son marcas de Anthropic, PBC. Este proyecto es independiente: **no está afiliado, respaldado ni patrocinado por Anthropic**.
