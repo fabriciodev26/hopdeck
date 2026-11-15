@@ -155,3 +155,19 @@ test('scroll del historial del chat: la rueda lo recorre y la barra muestra la p
     h.write('\x1bOP'); await h.sleep(200); h.write('c');
   } finally { await h.close(); }
 });
+
+test('primer arranque: pregunta si `claude` debe abrir Hopdeck, recuerda "No" y no toca el perfil', opts, async () => {
+  const root = tmp('hopdeck-ui-offer-'); const fx = makeFixture(root, [alpha()]);
+  const cfgFile = path.join(root, 'cfg.json');
+  const h = launchHub({ root, fx, cwd: fx.cwds.alpha, env: { HOPDECK_NOPROMPT: '' } });
+  try {
+    await h.waitFor(/abra Hopdeck/, 'pregunta del primer arranque', 40000);
+    assert.match(h.screen(), /\[Enter\] Sí/, 'muestra las opciones');
+    assert.match(h.screen(), /copia de seguridad/, 'avisa de la copia de seguridad');
+    h.write('n');
+    await h.waitFor(/Sesión dos/, 'después de responder se abre la lista');
+    const cfg = JSON.parse(fs.readFileSync(cfgFile, 'utf8'));
+    assert.equal(cfg.shortcutAsked, true, 'queda guardado que ya se preguntó');
+    h.write('q');
+  } finally { await h.close(); }
+});

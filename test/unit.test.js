@@ -418,3 +418,41 @@ test('findClaude: encuentra un programa en el PATH por su nombre y no inventa lo
     assert.equal(hd.findClaude('no-existe-este-programa'), null, 'devuelve null si no está');
   } finally { process.env.PATH = prev; if (prevExt === undefined) delete process.env.PATHEXT; else process.env.PATHEXT = prevExt; }
 });
+
+// ───────────── primer arranque: ofrecer el atajo ─────────────
+test('offerShortcut: pregunta una vez, respeta la respuesta y nunca pregunta si ya está instalado', async () => {
+  const d = tmp('hopdeck-offer-'); const rc = path.join(d, '.bashrc'); const bak = rc + '.hopdeck-backup';
+  const original = 'export A=1\n'; const list = [{ file: rc, kind: 'posix' }];
+  const reset = () => { hd.CFG.shortcutAsked = false; fs.writeFileSync(rc, original); fs.rmSync(bak, { force: true }); };
+  const ask = (ans) => { const f = async () => { f.n++; return ans; }; f.n = 0; return f; };
+  const prevPrompt = process.env.HOPDECK_NOPROMPT; delete process.env.HOPDECK_NOPROMPT;
+  try {
+    reset(); let a = ask('later');
+    assert.equal(await hd.offerShortcut({ list, ask: a, quiet: true }), 'later');
+    assert.ok(!hd.CFG.shortcutAsked, '"Más tarde" no cuenta como respuesta');
+    assert.equal(fs.readFileSync(rc, 'utf8'), original, 'no toca el perfil');
+
+    a = ask('no');
+    assert.equal(await hd.offerShortcut({ list, ask: a, quiet: true }), 'no');
+    assert.ok(hd.CFG.shortcutAsked, 'se acuerda de que dijiste que no');
+    assert.equal(fs.readFileSync(rc, 'utf8'), original, 'sigue sin tocar el perfil');
+    a = ask('yes');
+    assert.equal(await hd.offerShortcut({ list, ask: a, quiet: true }), 'skipped', 'ya no vuelve a preguntar');
+    assert.equal(a.n, 0);
+
+    reset(); a = ask('yes');
+    assert.equal(await hd.offerShortcut({ list, ask: a, quiet: true }), 'yes');
+    assert.ok(fs.readFileSync(rc, 'utf8').includes(hd.MARK_A), 'instala el atajo');
+    assert.equal(fs.readFileSync(bak, 'utf8'), original, 'con copia de seguridad del perfil');
+    assert.ok(hd.CFG.shortcutAsked);
+
+    reset(); hd.install(false, list, true); hd.CFG.shortcutAsked = false; a = ask('yes');
+    assert.equal(await hd.offerShortcut({ list, ask: a, quiet: true }), 'installed', 'si ya estaba instalado, no pregunta');
+    assert.equal(a.n, 0);
+    assert.ok(hd.CFG.shortcutAsked);
+
+    reset(); process.env.HOPDECK_NOPROMPT = '1'; a = ask('yes');
+    assert.equal(await hd.offerShortcut({ list, ask: a, quiet: true }), 'skipped', 'HOPDECK_NOPROMPT lo desactiva');
+    assert.equal(a.n, 0);
+  } finally { if (prevPrompt === undefined) delete process.env.HOPDECK_NOPROMPT; else process.env.HOPDECK_NOPROMPT = prevPrompt; hd.CFG.shortcutAsked = false; }
+});

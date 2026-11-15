@@ -30,7 +30,7 @@ test('hub embebido: salto rápido, chat en el panel derecho, foco y salida', { s
   const env = {
     ...process.env, [pathKey]: bin + path.delimiter + process.env[pathKey],
     CLAUDE_CONFIG_DIR: fx.cfg, HOPDECK_CONFIG: path.join(root, 'cfg.json'), HOPDECK_CACHE: path.join(root, 'cache.json'),
-    HOPDECK_LANG: 'es', HOPDECK_EMBED: '1', HOPDECK_THEME: 'dark', COLORTERM: 'truecolor', NO_COLOR: '',
+    HOPDECK_NOPROMPT: '1', HOPDECK_LANG: 'es', HOPDECK_EMBED: '1', HOPDECK_THEME: 'dark', COLORTERM: 'truecolor', NO_COLOR: '',
   };
   delete env.HOPDECK_INSIDE; delete env.TMUX; delete env.NO_COLOR;
 

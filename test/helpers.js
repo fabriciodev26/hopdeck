@@ -86,7 +86,7 @@ function launchHub({ root, fx, env: extra = {}, home = null, cwd = null, cols = 
   const env = {
     ...process.env, [pathKey]: bin + path.delimiter + process.env[pathKey],
     CLAUDE_CONFIG_DIR: fx.cfg, HOPDECK_CONFIG: path.join(root, 'cfg.json'), HOPDECK_CACHE: path.join(root, 'cache.json'),
-    HOPDECK_LANG: 'es', HOPDECK_EMBED: '1', HOPDECK_THEME: 'dark', COLORTERM: 'truecolor', ...extra,
+    HOPDECK_NOPROMPT: '1', HOPDECK_LANG: 'es', HOPDECK_EMBED: '1', HOPDECK_THEME: 'dark', COLORTERM: 'truecolor', ...extra,
   };
   if (home) { env.HOME = home; env.USERPROFILE = home; }
   delete env.HOPDECK_INSIDE; delete env.TMUX; delete env.NO_COLOR;

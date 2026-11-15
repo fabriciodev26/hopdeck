@@ -1565,6 +1565,7 @@ function splash(done, total) {
 async function run() {
   if (!process.stdin.isTTY || !process.stdout.isTTY) { printList(); return; }
   if (!SIDEBAR && process.env.HOPDECK_INSIDE) { console.log(T.inside); return; }
+  if (!SIDEBAR) await offerShortcut(); // primera vez: ¿quieres que `claude` abra Hopdeck?
   if (!SIDEBAR) {
     const preferTmux = !WIN && !process.env.HOPDECK_NOTMUX && !process.env.HOPDECK_EMBED && hasTmux();
     if (preferTmux) return bootstrap();
@@ -1749,6 +1750,57 @@ function install(remove, list = targets(), quiet = false) {
   return { done, baks };
 }
 
+// ── Primer arranque: ofrecer que escribir `claude` abra Hopdeck ──
+const markAsked = () => { CFG.shortcutAsked = true; saveCfg(); };
+const hasShortcut = (list) => list.some((t) => { try { return fs.readFileSync(t.file, 'utf8').includes(MARK_A); } catch { return false; } });
+
+/** Espera una tecla; `accept(k)` devuelve el valor a entregar, o undefined para seguir esperando. Ctrl+C sale. */
+function readKey(accept) {
+  return new Promise((resolve) => {
+    const wasRaw = process.stdin.isRaw;
+    process.stdin.setRawMode(true); process.stdin.resume();
+    const on = (buf) => {
+      const k = buf.toString('utf8');
+      if (k === '\x03') { try { process.stdin.setRawMode(false); } catch { /* */ } process.stdout.write('\n'); process.exit(130); }
+      const v = accept(k);
+      if (v === undefined) return;
+      process.stdin.removeListener('data', on);
+      try { process.stdin.setRawMode(!!wasRaw); } catch { /* */ }
+      process.stdin.pause();
+      resolve(v);
+    };
+    process.stdin.on('data', on);
+  });
+}
+
+function askShortcut() {
+  process.stdout.write(`\n  ${C.brand}${C.bold}» Hop${R}${C.text}${C.bold}deck${R}\n\n  ${C.text}${C.bold}${T.offerQ}${R}\n  ${C.dim}${T.offerInfo}${R}\n\n  ${C.accent}${T.offerKeys}${R}\n`);
+  return readKey((k) => (k === '\r' || k === '\n' || /^[sSyY]$/.test(k) ? 'yes' : /^[nN]$/.test(k) ? 'no' : k === '\x1b' || /^[mM]$/.test(k) ? 'later' : undefined));
+}
+
+/**
+ * La primera vez que se abre Hopdeck pregunta si `claude` a secas debe abrirlo (instala el atajo, con copia de seguridad del perfil).
+ * Solo pregunta una vez ("Más tarde" no cuenta) y nunca si ya está instalado. Devuelve el resultado; `opts` permite probarlo sin terminal.
+ */
+async function offerShortcut(opts = {}) {
+  if (CFG.shortcutAsked || process.env.HOPDECK_NOPROMPT) return 'skipped';
+  const list = opts.list || targets();
+  if (hasShortcut(list)) { markAsked(); return 'installed'; }
+  const ans = await (opts.ask || askShortcut)();
+  if (ans === 'no') { markAsked(); return 'no'; }
+  if (ans !== 'yes') return 'later';
+  const r = install(false, list, true);
+  markAsked();
+  if (!opts.quiet) {
+    process.stdout.write(`\n  ${r.done.length ? `${C.ok}✓${R} ${T.offerDone}` : `${C.warn}✗${R} ${T.offerFail}`}\n`);
+    r.baks.forEach((b) => process.stdout.write(`  ${C.dim}${T.bakMsg(shortPath(b))}${R}\n`));
+    process.stdout.write(`\n  ${C.dim}${T.offerCont}${R}`);
+    await readKey(() => true);
+    process.stdout.write('\n');
+  }
+  return r.done.length ? 'yes' : 'failed';
+}
+
 function tutorial(afterInstall) {
   const a = C.accent, d = C.dim, b = C.bold;
   const L = LANG === 'es' ? [
@@ -1778,8 +1830,8 @@ function tutorial(afterInstall) {
 // ───────────────────────── entrada ─────────────────────────
 function main() {
   const [cmd, ...rest] = process.argv.slice(2);
-  if (cmd === 'install') install(false);
-  else if (cmd === 'uninstall') install(true);
+  if (cmd === 'install') { install(false); markAsked(); }
+  else if (cmd === 'uninstall') { install(true); markAsked(); }
   else if (cmd === 'help' || cmd === '--help' || cmd === '-h') tutorial(false);
   else if (cmd === '--version' || cmd === '-v') console.log(VERSION);
   else if (cmd === '--list') printList();
@@ -1803,7 +1855,7 @@ else {
   module.exports = {
     cw, strW, fit, clean, imageExt, exportImages, safeId, findClaude, install, backupProfile, ago, tidy, fuzzy, wrapText, parseKeys, KEYMAP, isType, T, S, CFG, E,
     readSession, buildProject, scan, scanAsync, finishScan, sortProjects, projectDirs,
-    view, flatList, stripBlock, SNIP, MARK_A, MARK_B, toggleProject, cacheLoad, selNorm,
+    view, flatList, stripBlock, offerShortcut, SNIP, MARK_A, MARK_B, toggleProject, cacheLoad, selNorm,
     decodePNG, decodeImage, scaleBox, fitSize, halfBlocks, collectImages, extractImages,
     editBuf, stripJsonc, wtCtrlV, fbNames, linkChats, findImageByNumber: images.findImageByNumber,
   };

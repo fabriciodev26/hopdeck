@@ -3,6 +3,7 @@
 ## 1.2.0 · primera versión pública
 
 ### Nuevo
+- **Instalación en un solo comando:** la primera vez que se abre, Hopdeck pregunta si escribir `claude` debe abrirlo (con copia de seguridad del perfil). Responder "No" se recuerda y "Más tarde" no cuenta; no pregunta si el atajo ya está instalado. `HOPDECK_NOPROMPT=1` lo desactiva.
 - **Vista previa al pasar el cursor:** con el ratón basta pasar por la lista para ver la conversación; ya no hace falta moverse con las flechas.
 - **Imágenes en el chat:** al pasar el cursor sobre un `[Image #N]` de un mensaje ya enviado aparece un cuadro flotante con esa imagen, pegado a la marca y sin tapar el resto del chat. Funciona también con imágenes más allá de las 200 de la galería (se busca en todo el historial).
 - **Selector de carpetas (`o`):** se navega desde `~` con flechas (`⏎` entra, `←` sube, `espacio` abre un chat en la carpeta resaltada). `/` filtra, `.` muestra las ocultas, `~` vuelve al inicio, y en Windows `←` desde la raíz lista las unidades. Las carpetas usadas recientemente salen arriba. `＋ Nueva carpeta aquí…` crea una carpeta escribiendo solo el nombre (pide confirmar).

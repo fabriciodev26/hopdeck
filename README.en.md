@@ -41,15 +41,17 @@ Hopdeck shows **all your projects and conversations on one screen**, with previe
 
 ```bash
 npm install -g hopdeck
-hopdeck install        # optional: typing `claude` then opens Hopdeck
+hopdeck
 ```
 
-Open a new terminal and type `claude` (or `hopdeck`). Done. You can also try it without installing: `npx hopdeck`.
+Done. You can also try it without installing: `npx hopdeck`.
 
-`hopdeck install` adds a small `claude` function to your shell profile (bash, zsh, fish or PowerShell), after saving a **backup** of the profile:
+**The first time** you open it, Hopdeck asks whether typing `claude` should open it. If you say yes, it adds a small `claude` function to your shell profile (bash, zsh, fish or PowerShell), after saving a **backup** of the profile (it works in a new terminal):
 
 - `claude` alone → opens Hopdeck.
 - `claude <any argument>` (`-p`, `--resume`, `--model`…) → works exactly as usual.
+
+You can say no and always use `hopdeck`. If you change your mind: `hopdeck install`.
 
 **Remove it:** `hopdeck uninstall`. To skip it once: `HOPDECK_SKIP=1 claude`.
 
