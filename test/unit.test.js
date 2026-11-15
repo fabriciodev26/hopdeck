@@ -390,3 +390,20 @@ test('install: si no se puede hacer la copia, el perfil no se modifica', () => {
     assert.equal(fs.readFileSync(rc, 'utf8'), original, 'el perfil queda intacto');
   } finally { fs.copyFileSync = orig; }
 });
+
+// ───────────── textos: español e inglés completos ─────────────
+test('i18n: español e inglés tienen las mismas claves y todas las funciones devuelven texto', () => {
+  const file = require.resolve('../lib/i18n.js'), prev = process.env.HOPDECK_LANG;
+  const load = (lang) => { process.env.HOPDECK_LANG = lang; delete require.cache[file]; return require(file).T; };
+  try {
+    const es = load('es'), en = load('en');
+    assert.deepEqual(Object.keys(es).sort(), Object.keys(en).sort(), 'no falta ninguna clave en un idioma');
+    for (const [lang, T] of [['es', es], ['en', en]]) {
+      for (const [k, v] of Object.entries(T)) if (typeof v === 'function') assert.equal(typeof v(3, 'x', 'y'), 'string', `${lang}.${k}()`);
+      assert.ok(T.dcHist && T.dcPrefs && T.dcShort, `${lang}: los textos de "doctor" están localizados`);
+    }
+  } finally {
+    if (prev === undefined) delete process.env.HOPDECK_LANG; else process.env.HOPDECK_LANG = prev;
+    delete require.cache[file];
+  }
+});

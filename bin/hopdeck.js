@@ -1617,19 +1617,19 @@ function doctor() {
   console.log(`\n  ${C.brand}${C.bold}» Hop${R}${C.text}${C.bold}deck doctor${R}  ${C.dim}v${VERSION}${R}\n`);
   ok(`Node ${process.version} · ${process.platform} ${process.arch}`);
   const n = projectDirs().length;
-  n ? ok(`Historial de Claude: ${n} proyectos en ${shortPath(path.join(CONFIG_DIR, 'projects'))}`)
-    : bad(`No hay historial en ${shortPath(path.join(CONFIG_DIR, 'projects'))}`, 'Usa Claude Code una vez, o define CLAUDE_CONFIG_DIR.');
+  const histDir = shortPath(path.join(CONFIG_DIR, 'projects'));
+  n ? ok(T.dcHist(n, histDir)) : bad(T.dcNoHist(histDir), T.dcNoHistHint);
   const bin = findClaude();
-  bin ? ok(`claude encontrado: ${shortPath(bin)}`) : bad('No se encuentra "claude" en el PATH', WIN ? 'Instálalo: irm https://claude.ai/install.ps1 | iex' : 'Instálalo: curl -fsSL https://claude.ai/install.sh | bash');
+  bin ? ok(T.dcClaude(shortPath(bin))) : bad(T.dcNoClaude, WIN ? T.dcInstallWin : T.dcInstallUnix);
   const tm = !WIN && hasTmux();
   const deps = loadDeps();
-  if (tm) ok('tmux disponible → vista dividida con tmux');
-  else if (deps) ok('Terminal embebido disponible (node-pty + xterm) → vista dividida');
-  else bad('Sin tmux ni terminal embebido → vista a pantalla completa', WIN ? 'Ejecuta npm install dentro de la carpeta del paquete.' : 'Instala tmux (brew install tmux / sudo apt install tmux).');
+  if (tm) ok(T.dcTmux);
+  else if (deps) ok(T.dcEmbed);
+  else bad(T.dcNone, WIN ? T.dcNoneWin : T.dcNoneUnix);
   let wrapped = false;
   for (const t of targets()) { try { if (fs.readFileSync(t.file, 'utf8').includes(MARK_A)) wrapped = true; } catch { /* */ } }
-  wrapped ? ok('Atajo instalado: escribir "claude" abre el hub') : bad('Atajo no instalado', 'Ejecuta: hopdeck install');
-  ok(`Preferencias: ${shortPath(CFG_FILE)} · caché: ${shortPath(CACHE_FILE)}`);
+  wrapped ? ok(T.dcShort) : bad(T.dcNoShort, T.dcNoShortHint);
+  ok(T.dcPrefs(shortPath(CFG_FILE), shortPath(CACHE_FILE)));
   if (process.env.WT_SESSION) { // dentro de Windows Terminal: Ctrl+V solo pega texto y no deja pegar imágenes
     const f = wtSettingsFile(); let st = null;
     try { st = f ? wtCtrlV(fs.readFileSync(f, 'utf8')) : null; } catch { /* */ }
