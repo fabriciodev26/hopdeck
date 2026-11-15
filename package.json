@@ -1,0 +1,54 @@
+{
+  "name": "hopdeck",
+  "version": "1.2.0",
+  "description": "Selector visual de proyectos y conversaciones para Claude Code, en la terminal: salta entre proyectos sin hacer cd.",
+  "author": "fabriciodev26",
+  "license": "MIT",
+  "homepage": "https://github.com/fabriciodev26/hopdeck#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fabriciodev26/hopdeck.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fabriciodev26/hopdeck/issues"
+  },
+  "bin": {
+    "hopdeck": "bin/hopdeck.js"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "README.md",
+    "README.en.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "SECURITY.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "cli",
+    "projects",
+    "resume",
+    "sessions",
+    "terminal",
+    "tmux",
+    "tui",
+    "windows-terminal",
+    "wsl"
+  ],
+  "scripts": {
+    "test": "node --test test/unit.test.js test/e2e.test.js test/ui.test.js",
+    "doctor": "node bin/hopdeck.js doctor",
+    "screenshots": "node scripts/screenshots.js"
+  },
+  "dependencies": {
+    "@lydell/node-pty": "1.2.0-beta.18",
+    "@xterm/headless": "6.0.0",
+    "jpeg-js": "0.4.4"
+  }
+}

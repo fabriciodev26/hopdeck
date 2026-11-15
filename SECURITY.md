@@ -1,0 +1,22 @@
+# Política de seguridad
+
+## Qué hace (y qué no) este programa con tus datos
+
+- Lee el historial local de Claude Code (`~/.claude/projects`, o `CLAUDE_CONFIG_DIR`). **No envía nada a internet**: no tiene telemetría, ni analítica, ni peticiones de red.
+- Escribe solo en tu equipo:
+  - `~/.hopdeck.json` (preferencias: proyectos fijados, ocultos, recientes…) y `~/.hopdeck-cache.json` (índice de títulos y primeros mensajes, con permisos solo para tu usuario).
+  - Una carpeta temporal privada con las imágenes cuando abres la galería con `o` (se borra al salir).
+  - Con `hopdeck install`, un bloque marcado en el perfil de tu shell (`~/.bashrc`, `~/.zshrc`, perfil de PowerShell…). Antes guarda una copia `<perfil>.hopdeck-backup` (la primera, sin sobrescribirla). `hopdeck uninstall` quita el bloque.
+  - Al renombrar una conversación (`R`), añade una línea `custom-title` al final de su archivo `.jsonl`, igual que hace Claude Code.
+- Ejecuta el comando `claude` que encuentre en tu `PATH`. Si alguien puede cambiar tu `PATH`, puede cambiar qué se ejecuta (como con cualquier programa).
+- Lo que se muestra en pantalla procedente del historial (títulos, mensajes, rutas) se limpia de caracteres de control y secuencias de escape antes de dibujarse.
+
+## Versiones con soporte
+
+Se corrigen las vulnerabilidades en la última versión publicada.
+
+## Cómo avisar de una vulnerabilidad
+
+Por favor **no abras un issue público**. Usa el aviso privado de GitHub (*Security → Report a vulnerability*) del repositorio, o escribe al autor por el medio de contacto indicado en el perfil de GitHub.
+Intenta incluir: versión (`hopdeck doctor`), sistema operativo y terminal, pasos para reproducirlo y el efecto que observas.
+Responderé en cuanto pueda y avisaré cuando haya una versión corregida.

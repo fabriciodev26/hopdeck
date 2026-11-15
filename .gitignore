@@ -1,0 +1,45 @@
+# Dependencias
+node_modules/
+
+# Paquetes generados con `npm pack`
+*.tgz
+
+# Registros y depuración
+*.log
+npm-debug.log*
+.npm/
+
+# Pruebas y cobertura
+coverage/
+.nyc_output/
+
+# Variables de entorno y secretos
+.env
+.env.*
+!.env.example
+
+# Preferencias y caché del propio hub (se crean en tu carpeta de usuario, por si se ejecuta aquí)
+.hopdeck.json
+.hopdeck-cache.json
+hopdeck-tmux.conf
+
+# Claude Code: ajustes y memoria locales de cada persona
+.claude/settings.local.json
+.claude/projects/
+
+# Editores
+.vscode/
+.idea/
+*.swp
+*~
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Salida temporal de comprobaciones del paquete
+pack.json
+
+# Notas privadas del autor (pendientes de publicación, decisiones de marca…): no se suben
+.interno/

@@ -1,0 +1,31 @@
+name: Idea / Feature request
+description: Propón una mejora · Suggest an improvement
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: Gracias por la idea · Thanks for the idea. Cuéntanos el problema antes que la solución. · Tell us the problem before the solution.
+  - type: textarea
+    id: problema
+    attributes:
+      label: Qué problema quieres resolver · What problem do you want to solve
+      placeholder: Cuando tengo muchos proyectos, me cuesta …
+    validations:
+      required: true
+  - type: textarea
+    id: propuesta
+    attributes:
+      label: Cómo te gustaría que funcionara · How would you like it to work
+    validations:
+      required: true
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: Alternativas que consideraste · Alternatives you considered
+  - type: checkboxes
+    id: confirmaciones
+    attributes:
+      label: Confirmaciones · Checks
+      options:
+        - label: Busqué si ya existe un issue parecido · I searched for a similar issue
+          required: true
