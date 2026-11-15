@@ -504,11 +504,19 @@
 <text x="799 808" y="297" fill="#808086" xml:space="preserve">el</text>
 <text x="826 835 844 853 862" y="297" fill="#808086" xml:space="preserve">panel</text>
 <text x="880 889 898 907 916 925 934 943 952" y="297" fill="#808086" xml:space="preserve">izquierdo</text>
-<text x="718 727" y="335" fill="#808086" xml:space="preserve">F1</text>
-<text x="745 754 763 772 781 790 799 808 817" y="335" fill="#808086" xml:space="preserve">proyectos</text>
-<text x="835" y="335" fill="#808086" xml:space="preserve">·</text>
-<text x="853 862" y="335" fill="#808086" xml:space="preserve">F2</text>
-<text x="880 889 898 907" y="335" fill="#808086" xml:space="preserve">chat</text>
+<text x="637" y="335" fill="#818cf8" xml:space="preserve">⏎</text>
+<text x="655 664 673 682 691 700 709 718" y="335" fill="#818cf8" xml:space="preserve">reanudar</text>
+<text x="754" y="335" fill="#818cf8" xml:space="preserve">n</text>
+<text x="772 781 790 799 808" y="335" fill="#818cf8" xml:space="preserve">nueva</text>
+<text x="844" y="335" fill="#818cf8" xml:space="preserve">/</text>
+<text x="862 871 880 889 898 907" y="335" fill="#818cf8" xml:space="preserve">buscar</text>
+<text x="943" y="335" fill="#818cf8" xml:space="preserve">?</text>
+<text x="961 970 979 988 997" y="335" fill="#818cf8" xml:space="preserve">ayuda</text>
+<text x="718 727" y="354" fill="#808086" xml:space="preserve">F1</text>
+<text x="745 754 763 772 781 790 799 808 817" y="354" fill="#808086" xml:space="preserve">proyectos</text>
+<text x="835" y="354" fill="#808086" xml:space="preserve">·</text>
+<text x="853 862" y="354" fill="#808086" xml:space="preserve">F2</text>
+<text x="880 889 898 907" y="354" fill="#808086" xml:space="preserve">chat</text>
 <text x="25" y="487" fill="#808086" xml:space="preserve">⌂</text>
 <text x="43 52 61 70 79 88 97 106 115 124 133 142 151 160 169 178 187 196 205 214" y="487" fill="#808086" xml:space="preserve">~\work\tienda-online</text>
 <text x="25" y="506" fill="#818cf8" xml:space="preserve">⌕</text>

@@ -2,6 +2,13 @@
 
 ## 1.2.5
 
+### Mejorado
+- **Lista más legible:** el número de conversaciones de cada proyecto destaca y se separa de «hace cuánto» con un punto; los proyectos plegados se atenúan y el desplegado lleva la flecha en color.
+- **Vista previa más rica:** una fila de resumen («hace 3 h · últimos 6 mensajes»), tus mensajes con `›` en violeta y los de Claude con `●` en naranja.
+- **Barra de ayuda contextual:** muestra solo las teclas que sirven para lo seleccionado (proyecto: desplegar y fijar; conversación: reanudar y renombrar).
+- **Pantalla de bienvenida** con las teclas principales cuando no hay nada abierto.
+- **Icono** del proyecto (`docs/icon.svg` y `docs/icon.png`) para el avatar del repositorio.
+
 ### Cambiado
 - **En Linux y macOS el terminal integrado es ahora el modo por defecto**, también con `tmux` instalado, para que la vista previa al pasar el cursor y las imágenes funcionen igual que en Windows. El modo tmux sigue disponible con `HOPDECK_TMUX=1` y se usa solo si el terminal integrado no está disponible.
 - **La vista previa de imagen es más pequeña** (como mucho 36×9 celdas): es una vista rápida, no un visor. Para verla en grande, clic sobre `[Image #N]`.

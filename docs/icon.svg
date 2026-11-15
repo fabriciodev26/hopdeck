@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Hopdeck">
+  <title>Hopdeck</title>
+  <rect width="512" height="512" rx="104" fill="#0d1117"/>
+  <path fill="#d97757" d="M181.34 383L121.58 383L121.58 135.73L181.34 135.73L181.34 234.97L278.78 234.97L278.78 135.73L338.42 135.73L338.42 383L278.78 383L278.78 283.63L181.34 283.63L181.34 383Z"/>
+  <rect x="367.1" y="335" width="26" height="48" rx="5" fill="#ffffff"/>
+</svg>

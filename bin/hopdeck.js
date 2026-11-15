@@ -393,10 +393,14 @@ function frameTree(W, H) {
     const base = sel ? (EMBED && E.focus === 'right' ? C.selOff : C.selOn) : '';
     const mark = [sel ? '▌' : ' ', C.accent];
     if (e.t === 'p') {
-      const right = (e.p.sessions.length ? String(e.p.sessions.length).padStart(3) + ' ' + ago(e.p.mtime).padStart(6) : '');
-      lines.push(fit([mark, [e.open ? ' ▾ ' : ' ▸ ', C.dim],
-        [(e.p.pinned ? '★ ' : '') + (e.p.isCwd ? '● ' : '') + e.p.name, sel ? C.text + C.bold : e.p.hidden ? C.dim : (e.p.isCwd ? C.ok : C.text)]], W - 11, base) +
-        fit([[right, C.dim]], 11, base));
+      const n = e.p.sessions.length;
+      // nº de conversaciones (destacado) · hace cuánto fue la última; alineado con la columna de tiempo de las conversaciones
+      const right = n ? [[String(n).padStart(3), sel ? C.text + C.bold : C.text], [' · ', C.faint], [''.padEnd(0), ''], [ago(e.p.mtime).padStart(6), C.dim], [' ', '']] : [[' ', '']];
+      // 4) los proyectos plegados se atenúan: el desplegado, el de esta carpeta y el seleccionado destacan
+      const nameC = sel ? C.text + C.bold : e.p.hidden ? C.dim : e.p.isCwd ? C.ok : e.open ? C.text : C.dim;
+      lines.push(fit([mark, [e.open ? ' ▾ ' : ' ▸ ', e.open ? C.accent : C.dim],
+        [(e.p.pinned ? '★ ' : '') + (e.p.isCwd ? '● ' : '') + e.p.name, nameC]], W - 13, base) +
+        fit(right, 13, base));
     } else if (e.t === 'm') {
       lines.push(fit([mark, ['      ', ''], [T.more(e.n), sel ? C.text : C.dim]], W, base));
     } else if (e.t === 'l') {
@@ -430,7 +434,11 @@ function frameTree(W, H) {
       ['  Tab ' + (S.deep ? '◉ ' : '○ ') + T.deep, S.deep ? C.ok : C.dim]], W));
   } else {
     const k = T.k, segs = [[' ', '']];
-    for (const [key, desc] of [['⏎', k.open], ['n', k.neu], ['/', k.find], ['?', LANG === 'es' ? 'ayuda' : 'help']]) segs.push([key, C.accent], [' ' + desc + ' ', C.dim]);
+    const keys = !cur ? [['⏎', k.open], ['n', k.neu], ['/', k.find], ['?', T.kHelp]]
+      : cur.t === 'p' ? [['⏎', T.kUnfold], ['n', k.neu], ['p', T.kPin], ['/', k.find], ['?', T.kHelp]]
+      : cur.t === 's' ? [['⏎', k.resume], ['R', T.kRename], ['n', k.neu], ['/', k.find], ['?', T.kHelp]]
+      : [['⏎', k.open], ['n', k.neu], ['/', k.find], ['?', T.kHelp]];
+    for (const [key, desc] of keys) segs.push([key, C.accent], [' ' + desc + '  ', C.dim]);
     lines.push(fit(segs, W));
   }
   return lines;
@@ -870,7 +878,8 @@ function termRow(term, y, width, sel, from = 0) {
 const paintMark = (t) => t.replace('\u0001', R + C.text + C.bold);
 
 function idleRow(y, width, height) {
-  const rows = [[C.brand + C.bold, '» Hop\u0001deck'], [C.text, T.idle1], [C.dim, T.idle2], ['', ''], [C.dim, T.idle3]];
+  const k = T.k;
+  const rows = [[C.brand + C.bold, '» Hop\u0001deck'], [C.text, T.idle1], [C.dim, T.idle2], ['', ''], [C.accent, `⏎ ${k.resume}   n ${k.neu}   / ${k.find}   ? ${T.kHelp}`], [C.dim, T.idle3]];
   const i = y - (Math.floor(height / 2) - 2);
   if (i < 0 || i >= rows.length) return ' '.repeat(width);
   const [st, t] = rows[i];
@@ -1169,18 +1178,22 @@ function previewFor(x) {
   return null;
 }
 
-function previewRows(msgs, width, height) {
+function previewRows(msgs, width, height, info = '') {
   const lines = [];
   for (const m of msgs) {
     const user = m.role === 'user';
-    wrapText(m.text, Math.max(10, width - 4)).forEach((t, i) => lines.push([i === 0 ? (user ? ' › ' : '   ') : '   ', user ? C.accent : '', t, user ? C.text : C.dim]));
+    // tú: › en violeta y texto destacado; Claude: ● en naranja y texto atenuado
+    wrapText(m.text, Math.max(10, width - 4)).forEach((t, i) => lines.push([i === 0 ? (user ? ' › ' : ' ● ') : '   ', user ? C.accent + C.bold : C.brand, t, user ? C.text : C.dim]));
     lines.push(null);
   }
   while (lines.length && lines[lines.length - 1] === null) lines.pop();
-  const shown = lines.slice(-Math.max(1, height - 2)), rows = [];
+  const head = info ? 2 : 0; // fila de resumen + línea en blanco
+  const shown = lines.slice(-Math.max(1, height - 2 - head)), rows = [];
   for (let i = 0; i < height; i++) {
     if (i === height - 1) { rows.push(fit([[' ' + T.prevHint, C.accent]], width)); continue; }
-    const l = shown[i];
+    if (info && i === 0) { rows.push(fit([[' ' + info, C.dim]], width)); continue; }
+    if (info && i === 1) { rows.push(' '.repeat(width)); continue; }
+    const l = shown[i - head];
     rows.push(l ? fit([[l[0], l[1]], [' ' + (l[2] || ''), l[3]]], width) : ' '.repeat(width));
   }
   return rows;
@@ -1201,7 +1214,7 @@ function renderEmbed() {
   // sin chat abierto: vista previa de la conversación seleccionada en la lista
   const selEnt = !sh && !S.help && !S.qs ? flatList()[S.c] : null;
   const pvMsgs = selEnt && selEnt.t === 's' ? previewFor(selEnt.s) : null;
-  const pvRows = pvMsgs && pvMsgs.length ? previewRows(pvMsgs, rw, th) : null;
+  const pvRows = pvMsgs && pvMsgs.length ? previewRows(pvMsgs, rw, th, T.prevInfo(ago(selEnt.s.mtime), pvMsgs.length)) : null;
   const hdr = sh || (selEnt && selEnt.t === 's' ? { project: selEnt.p.name, title: selEnt.s.title, branch: gitBranch(selEnt.p.cwd) } : null);
   const gRows = E.gallery ? galleryRows(rw, th) : null;
   const hv = !E.gallery && sh && sh.ready && E.hover && !E.hover.g.loading && E.hover.g.images.length ? E.hover : null;

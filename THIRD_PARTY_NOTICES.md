@@ -13,7 +13,7 @@ Ninguna dependencia ejecuta scripts de instalación (`npm audit`: 0 vulnerabilid
 
 ## Tipografía del logotipo
 
-El texto de `docs/logo-*.svg` y `docs/logo-*.png` está convertido a trazados a partir de la fuente [Inter](https://rsms.me/inter/) (peso 800), con licencia SIL Open Font License 1.1, que permite este uso. No se distribuye la fuente.
+El texto de `docs/logo-*.svg`, `docs/logo-*.png` y la «H» de `docs/icon.*` están convertido a trazados a partir de la fuente [Inter](https://rsms.me/inter/) (peso 800), con licencia SIL Open Font License 1.1, que permite este uso. No se distribuye la fuente.
 
 ## Marcas
 

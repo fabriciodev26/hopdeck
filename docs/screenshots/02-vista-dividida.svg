@@ -475,10 +475,11 @@
 <text x="763 772 781 790 799 808 817" y="50" fill="#e8e6e3" xml:space="preserve">compras</text>
 <text x="835 844 853" y="50" fill="#e8e6e3" xml:space="preserve">con</text>
 <text x="871 880 889 898 907 916 925" y="50" fill="#e8e6e3" xml:space="preserve">cupones</text>
-<text x="34" y="88" fill="#808086" xml:space="preserve">▾</text>
+<text x="34" y="88" fill="#818cf8" xml:space="preserve">▾</text>
 <text x="52" y="88" fill="#7ec48f" xml:space="preserve">●</text>
 <text x="70 79 88 97 106 115 124 133 142 151 160 169 178" y="88" fill="#7ec48f" xml:space="preserve">tienda-online</text>
-<text x="421" y="88" fill="#808086" xml:space="preserve">4</text>
+<text x="403" y="88" fill="#e8e6e3" xml:space="preserve">4</text>
+<text x="421" y="88" fill="#4e4e54" xml:space="preserve">·</text>
 <text x="439 448" y="88" fill="#808086" xml:space="preserve">30</text>
 <text x="466 475 484" y="88" fill="#808086" xml:space="preserve">min</text>
 <text x="511 520 529 538" y="88" fill="#e8e6e3" font-weight="bold" xml:space="preserve">chat</text>
@@ -531,8 +532,9 @@
 <text x="673 682 691" y="183" fill="#e8e6e3" xml:space="preserve">que</text>
 <text x="709 718 727 736 745" y="183" fill="#e8e6e3" xml:space="preserve">hice:</text>
 <text x="34" y="202" fill="#808086" xml:space="preserve">▸</text>
-<text x="52 61 70 79 88 97 106 115 124 133 142 151 160" y="202" fill="#e8e6e3" xml:space="preserve">blog-personal</text>
-<text x="421" y="202" fill="#808086" xml:space="preserve">2</text>
+<text x="52 61 70 79 88 97 106 115 124 133 142 151 160" y="202" fill="#808086" xml:space="preserve">blog-personal</text>
+<text x="403" y="202" fill="#e8e6e3" xml:space="preserve">2</text>
+<text x="421" y="202" fill="#4e4e54" xml:space="preserve">·</text>
 <text x="466" y="202" fill="#808086" xml:space="preserve">5</text>
 <text x="484" y="202" fill="#808086" xml:space="preserve">h</text>
 <text x="529" y="202" fill="#e8e6e3" xml:space="preserve">-</text>
@@ -544,8 +546,9 @@
 <text x="871" y="202" fill="#e8e6e3" xml:space="preserve">y</text>
 <text x="889 898 907 916 925 934 943 952 961 970 979" y="202" fill="#e8e6e3" xml:space="preserve">vencimiento</text>
 <text x="34" y="221" fill="#808086" xml:space="preserve">▸</text>
-<text x="52 61 70 79 88 97 106 115 124 133 142 151" y="221" fill="#e8e6e3" xml:space="preserve">api-reservas</text>
-<text x="421" y="221" fill="#808086" xml:space="preserve">2</text>
+<text x="52 61 70 79 88 97 106 115 124 133 142 151" y="221" fill="#808086" xml:space="preserve">api-reservas</text>
+<text x="403" y="221" fill="#e8e6e3" xml:space="preserve">2</text>
+<text x="421" y="221" fill="#4e4e54" xml:space="preserve">·</text>
 <text x="466" y="221" fill="#808086" xml:space="preserve">8</text>
 <text x="484" y="221" fill="#808086" xml:space="preserve">h</text>
 <text x="529" y="221" fill="#e8e6e3" xml:space="preserve">-</text>
@@ -555,8 +558,9 @@
 <text x="952 961" y="221" fill="#e8e6e3" xml:space="preserve">de</text>
 <text x="979 988 997 1006 1015 1024 1033" y="221" fill="#e8e6e3" xml:space="preserve">límites</text>
 <text x="34" y="240" fill="#808086" xml:space="preserve">▸</text>
-<text x="52 61 70 79 88 97 106 115 124 133 142" y="240" fill="#e8e6e3" xml:space="preserve">app-recetas</text>
-<text x="421" y="240" fill="#808086" xml:space="preserve">1</text>
+<text x="52 61 70 79 88 97 106 115 124 133 142" y="240" fill="#808086" xml:space="preserve">app-recetas</text>
+<text x="403" y="240" fill="#e8e6e3" xml:space="preserve">1</text>
+<text x="421" y="240" fill="#4e4e54" xml:space="preserve">·</text>
 <text x="466" y="240" fill="#808086" xml:space="preserve">1</text>
 <text x="484" y="240" fill="#808086" xml:space="preserve">d</text>
 <text x="529" y="240" fill="#e8e6e3" xml:space="preserve">-</text>
@@ -566,8 +570,9 @@
 <text x="700 709 718 727 736 745" y="240" fill="#e8e6e3" xml:space="preserve">(todas</text>
 <text x="763 772 781 790 799 808" y="240" fill="#e8e6e3" xml:space="preserve">pasan)</text>
 <text x="34" y="259" fill="#808086" xml:space="preserve">▸</text>
-<text x="52 61 70 79 88 97 106 115 124 133 142 151" y="259" fill="#e8e6e3" xml:space="preserve">landing-cafe</text>
-<text x="421" y="259" fill="#808086" xml:space="preserve">1</text>
+<text x="52 61 70 79 88 97 106 115 124 133 142 151" y="259" fill="#808086" xml:space="preserve">landing-cafe</text>
+<text x="403" y="259" fill="#e8e6e3" xml:space="preserve">1</text>
+<text x="421" y="259" fill="#4e4e54" xml:space="preserve">·</text>
 <text x="466" y="259" fill="#808086" xml:space="preserve">8</text>
 <text x="484" y="259" fill="#808086" xml:space="preserve">d</text>
 <text x="511 520 529 538 547 556 565 574" y="278" fill="#e8e6e3" xml:space="preserve">¿Quieres</text>
@@ -585,13 +590,15 @@
 <text x="25" y="487" fill="#808086" xml:space="preserve">⌂</text>
 <text x="43 52 61 70 79 88 97 106 115 124 133 142 151 160 169 178 187 196 205 214" y="487" fill="#808086" xml:space="preserve">~\work\tienda-online</text>
 <text x="25" y="506" fill="#818cf8" xml:space="preserve">⏎</text>
-<text x="43 52 61 70 79" y="506" fill="#808086" xml:space="preserve">abrir</text>
-<text x="97" y="506" fill="#818cf8" xml:space="preserve">n</text>
-<text x="115 124 133 142 151" y="506" fill="#808086" xml:space="preserve">nueva</text>
-<text x="169" y="506" fill="#818cf8" xml:space="preserve">/</text>
-<text x="187 196 205 214 223 232" y="506" fill="#808086" xml:space="preserve">buscar</text>
-<text x="250" y="506" fill="#818cf8" xml:space="preserve">?</text>
-<text x="268 277 286 295 304" y="506" fill="#808086" xml:space="preserve">ayuda</text>
+<text x="43 52 61 70 79 88 97 106" y="506" fill="#808086" xml:space="preserve">reanudar</text>
+<text x="133" y="506" fill="#818cf8" xml:space="preserve">R</text>
+<text x="151 160 169 178 187 196 205 214 223" y="506" fill="#808086" xml:space="preserve">renombrar</text>
+<text x="250" y="506" fill="#818cf8" xml:space="preserve">n</text>
+<text x="268 277 286 295 304" y="506" fill="#808086" xml:space="preserve">nueva</text>
+<text x="331" y="506" fill="#818cf8" xml:space="preserve">/</text>
+<text x="349 358 367 376 385 394" y="506" fill="#808086" xml:space="preserve">buscar</text>
+<text x="421" y="506" fill="#818cf8" xml:space="preserve">?</text>
+<text x="439 448 457 466 475" y="506" fill="#808086" xml:space="preserve">ayuda</text>
 <text x="25 34" y="525" fill="#818cf8" xml:space="preserve">F1</text>
 <text x="52 61 70 79 88 97 106 115 124" y="525" fill="#808086" xml:space="preserve">proyectos</text>
 <text x="160 169" y="525" fill="#818cf8" xml:space="preserve">F2</text>
