@@ -1,5 +1,11 @@
 # Cambios
 
+## 1.2.3
+
+### Cambiado
+- **Una sola forma para cada comando:** `hopdeck install`, `hopdeck uninstall`, `hopdeck doctor` y `hopdeck help`. Se retiran las variantes que la 1.2.2 aceptaba (`--install`, `--uninstall`, `--doctor` y los alias `desinstalar`, `instalar`, `ayuda`, `version`, `list`): ahora dan un error que sugiere el comando correcto, en lugar de ejecutarse. Así hay una sola manera de hacer cada cosa.
+- **Las erratas con guiones también avisan:** `hopdeck --unistall` abría Hopdeck en silencio y le pasaba esa opción a `claude`. Ahora una opción con guiones que se parece a un comando da el mismo error con sugerencia. Las opciones reales de `claude` (`--model`, `--resume`, `-p`…) se siguen pasando tal cual.
+
 ## 1.2.2
 
 ### Corregido

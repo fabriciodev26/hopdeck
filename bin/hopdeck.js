@@ -1906,37 +1906,39 @@ function tutorial(afterInstall) {
 }
 
 // ───────────────────────── entrada ─────────────────────────
-// ── Comandos: una errata no debe abrir Hopdeck (antes "hopdeck unistall" lo abría y le pasaba la palabra a claude como argumento) ──
+// ── Comandos: UNA sola forma para cada uno (install, uninstall, doctor, help). Lo demás no hace nada: da un error con una sugerencia ──
 const COMMANDS = ['install', 'uninstall', 'doctor', 'help'];
-const COMMAND_ALIASES = { desinstalar: 'uninstall', remove: 'uninstall', instalar: 'install', ayuda: 'help', diagnostico: 'doctor', version: '--version', list: '--list' };
-/** Nombre de comando (también como --uninstall o en español); null si no lo es. */
-function commandName(arg) {
-  const w = String(arg || '').replace(/^-{1,2}/, '').toLowerCase();
-  return COMMANDS.includes(w) ? w : COMMAND_ALIASES[w] || null;
-}
+// Palabras que alguien escribiría para lo mismo: no son comandos y no se ejecutan, solo sirven para sugerir el correcto
+const SYNONYMS = { desinstalar: 'uninstall', remove: 'uninstall', delete: 'uninstall', instalar: 'install', ayuda: 'help', diagnostico: 'doctor', version: '--version', list: '--list' };
+/** Nombre de comando si `arg` es exactamente uno (sin guiones ni variantes); null si no. */
+const commandName = (arg) => (COMMANDS.includes(String(arg || '').toLowerCase()) ? String(arg).toLowerCase() : null);
 const editDistance = (a, b) => { const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]); for (let j = 1; j <= b.length; j++) d[0][j] = j; for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return d[a.length][b.length]; };
-/** El comando que más se parece a una palabra mal escrita (hasta 2 letras de diferencia), o null. */
+/** El comando que se quiso escribir (por parecido, sin contar guiones, o por sinónimo), o null. */
 function suggestCommand(word) {
-  const w = String(word || '').toLowerCase(); let best = null, bd = 3;
-  for (const c of [...COMMANDS, ...Object.keys(COMMAND_ALIASES)]) { const d = editDistance(w, c); if (d < bd) { bd = d; best = COMMAND_ALIASES[c] || c; } }
+  const w = String(word || '').replace(/^-+/, '').toLowerCase();
+  if (SYNONYMS[w]) return SYNONYMS[w];
+  let best = null, bd = 3;
+  for (const c of COMMANDS) { const d = editDistance(w, c); if (d < bd) { bd = d; best = c; } }
   return best;
 }
+// Opciones que el propio programa entiende; el resto de lo que empiece por "-" se pasa a claude
+const OWN_FLAGS = ['--help', '-h', '--version', '-v', '--list', '--idle', '--frame', '--sidebar'];
 
 function main() {
-  let [cmd, ...rest] = process.argv.slice(2);
-  const named = commandName(cmd);
-  if (named) cmd = named; // --uninstall, desinstalar… valen como uninstall
-  else if (cmd && !cmd.startsWith('-')) { // una palabra suelta que no es comando: es una errata, no algo que pasar a claude
+  const [cmd, ...rest] = process.argv.slice(2);
+  // una palabra suelta, o una opción con guiones que se parece a un comando (--uninstall, --unistall…), es una errata: no se abre
+  // Hopdeck ni se le pasa nada a claude
+  if (cmd && !commandName(cmd) && !OWN_FLAGS.includes(cmd) && (!cmd.startsWith('-') || suggestCommand(cmd))) {
     const sug = suggestCommand(cmd);
     console.error(`${C.warn}${T.unknownCmd(cmd)}${R}${sug ? ' ' + T.didYouMean(sug) : ''}\n${C.dim}${T.cmdList}${R}`);
     process.exit(2);
   }
-  if (cmd === 'install') { install(false); markAsked(); }
-  else if (cmd === 'uninstall') { install(true); markAsked(); }
-  else if (cmd === 'help' || cmd === '--help' || cmd === '-h') tutorial(false);
+  if (commandName(cmd) === 'install') { install(false); markAsked(); }
+  else if (commandName(cmd) === 'uninstall') { install(true); markAsked(); }
+  else if (commandName(cmd) === 'help' || cmd === '--help' || cmd === '-h') tutorial(false);
   else if (cmd === '--version' || cmd === '-v') console.log(VERSION);
   else if (cmd === '--list') printList();
-  else if (cmd === 'doctor') doctor();
+  else if (commandName(cmd) === 'doctor') doctor();
   else if (cmd === '--idle') idle();
   else if (cmd === '--frame') { // vista previa de un cuadro (pruebas)
     load();

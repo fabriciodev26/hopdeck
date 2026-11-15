@@ -620,37 +620,41 @@ test('shownSession: un chat nuevo sin enlazar solo toma una conversación creada
   } finally { Object.assign(hd.S, saved); }
 });
 
-// ───────────── comandos: una errata no abre Hopdeck ni se pasa a claude ─────────────
-test('commandName / suggestCommand: reconocen comandos, variantes con guiones y alias, y sugieren ante erratas', () => {
-  for (const [entrada, esperado] of [['install', 'install'], ['uninstall', 'uninstall'], ['--uninstall', 'uninstall'], ['UNINSTALL', 'uninstall'], ['desinstalar', 'uninstall'], ['remove', 'uninstall'], ['--doctor', 'doctor'], ['--help', 'help'], ['ayuda', 'help'], ['version', '--version'], ['list', '--list']])
+// ───────────── comandos: una sola forma para cada uno; lo demás da error con sugerencia ─────────────
+test('commandName / suggestCommand: solo cuenta la forma exacta, y las variantes y erratas sugieren el comando', () => {
+  for (const [entrada, esperado] of [['install', 'install'], ['uninstall', 'uninstall'], ['UNINSTALL', 'uninstall'], ['doctor', 'doctor'], ['help', 'help']])
     assert.equal(hd.commandName(entrada), esperado, entrada);
-  for (const no of ['unistall', '--model', 'opus', '-p', '', undefined]) assert.equal(hd.commandName(no), null, String(no));
-  assert.equal(hd.suggestCommand('unistall'), 'uninstall', 'la errata del historial real');
-  assert.equal(hd.suggestCommand('instal'), 'install');
-  assert.equal(hd.suggestCommand('doctr'), 'doctor');
+  for (const no of ['--uninstall', '--install', 'desinstalar', 'remove', 'version', 'unistall', '--model', '', undefined]) assert.equal(hd.commandName(no), null, `no es un comando: ${no}`);
+  for (const [entrada, sugerido] of [['unistall', 'uninstall'], ['--unistall', 'uninstall'], ['--uninstall', 'uninstall'], ['desinstalar', 'uninstall'], ['remove', 'uninstall'], ['instal', 'install'], ['instalar', 'install'], ['doctr', 'doctor'], ['ayuda', 'help']])
+    assert.equal(hd.suggestCommand(entrada), sugerido, entrada);
   assert.equal(hd.suggestCommand('xyzxyzxyz'), null, 'si no se parece a nada, no inventa');
+  // las opciones de claude no pueden confundirse con un comando: se pasan tal cual
+  for (const flag of ['--model', '--resume', '--continue', '-c', '-p', '--print', '--verbose', '--debug', '--add-dir', '--permission-mode', '--dangerously-skip-permissions', '--allowedTools', '--mcp-config', '--settings', '--append-system-prompt', '--ide', '--chrome', '--fork-session', '--session-id', '--output-format', '--max-turns'])
+    assert.equal(hd.suggestCommand(flag), null, `opción de claude: ${flag}`);
 });
 
-test('línea de comandos: una palabra mal escrita da error (no abre Hopdeck) y --uninstall sí desinstala', () => {
+test('línea de comandos: solo "install" y "uninstall" tocan el perfil; cualquier otra forma da error con sugerencia', () => {
   const cp = require('child_process'); const d = tmp('hopdeck-cli-');
   const perfil = path.join(d, 'perfil.sh'); fs.writeFileSync(perfil, 'export A=1\n');
   const env = { ...process.env, HOPDECK_CONFIG: path.join(d, 'cfg.json'), HOPDECK_CACHE: path.join(d, 'cache.json'), HOPDECK_PROFILES: perfil, HOPDECK_LANG: 'es', HOPDECK_NOPROMPT: '1', NO_COLOR: '1' };
   const run = (...args) => cp.spawnSync(process.execPath, [path.join(__dirname, '..', 'bin', 'hopdeck.js'), ...args], { env, encoding: 'utf8', timeout: 30000 });
+  const conBloque = () => fs.readFileSync(perfil, 'utf8').includes(hd.MARK_A);
 
-  const mal = run('unistall');
-  assert.equal(mal.status, 2, 'sale con error');
-  assert.match(mal.stderr, /Comando desconocido: "unistall"/);
-  assert.match(mal.stderr, /¿Quisiste decir "uninstall"\?/, 'sugiere el comando correcto');
-  assert.doesNotMatch(mal.stdout, /Hopdeck|Claude/i, 'y no abre ni lista nada');
+  assert.equal(run('install').status, 0); assert.ok(conBloque(), 'install instala el atajo');
+  for (const otra of ['--uninstall', 'desinstalar', 'remove', '--unistall', 'unistall']) {
+    const r = run(otra);
+    assert.equal(r.status, 2, `${otra}: sale con error`);
+    assert.match(r.stderr, new RegExp(`Comando desconocido: "${otra}"`), `${otra}: lo dice`);
+    assert.match(r.stderr, /¿Quisiste decir "uninstall"\?/, `${otra}: sugiere el único comando`);
+    assert.ok(conBloque(), `${otra}: NO toca el perfil`);
+    assert.doesNotMatch(r.stdout, /Hopdeck|Claude/i, `${otra}: no abre ni lista nada`);
+  }
+  assert.equal(run('uninstall').status, 0); assert.ok(!conBloque(), 'uninstall lo quita');
+  assert.equal(run('--install').status, 2, '--install tampoco: la única forma es install');
+  assert.ok(!conBloque());
 
-  assert.equal(run('--install').status, 0, '--install vale como install');
-  assert.ok(fs.readFileSync(perfil, 'utf8').includes(hd.MARK_A), 'instaló el atajo en el perfil de prueba');
-  assert.equal(run('--uninstall').status, 0, '--uninstall vale como uninstall');
-  assert.ok(!fs.readFileSync(perfil, 'utf8').includes(hd.MARK_A), 'y lo quitó');
-  assert.equal(run('desinstalar').status, 0, 'también en español');
-
-  const flag = run('--model', 'opus'); // lo que empieza por - sigue pasando a claude (sin terminal imprime la lista)
-  assert.equal(flag.status, 0, 'las opciones de claude no se rechazan');
-  assert.doesNotMatch(flag.stderr, /desconocido/);
+  const flag = run('--model', 'opus'); // lo que empieza por - y no se parece a un comando sigue pasando a claude (sin terminal imprime la lista)
+  assert.equal(flag.status, 0, 'las opciones de claude no se rechazan'); assert.doesNotMatch(flag.stderr, /desconocido/);
   assert.match(run('--version').stdout, /^\d+\.\d+\.\d+/, '--version sigue funcionando');
+  assert.equal(run('help').status, 0, 'help sigue funcionando');
 });

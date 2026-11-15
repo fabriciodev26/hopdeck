@@ -161,7 +161,7 @@ It always starts at `~`. Recently used folders appear on top (`↻ recent`).
 | `hopdeck --version` | Shows the version |
 | `hopdeck --model opus` | Anything starting with `-` is passed to `claude` when opening chats |
 
-A word that is not a command (for example `hopdeck unistall`) gives an error with a suggestion instead of opening Hopdeck.
+Each command has **one single form**. Any other word, or a variant such as `--uninstall`, `desinstalar` or `unistall`, gives an error that suggests the right command (`uninstall`) and does not open Hopdeck.
 
 ## Compatibility
 

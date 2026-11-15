@@ -161,7 +161,7 @@ Empieza siempre en `~`. Las carpetas que usaste hace poco aparecen arriba (`↻ 
 | `hopdeck --version` | Muestra la versión |
 | `hopdeck --model opus` | Lo que empiece por `-` se pasa a `claude` al abrir chats |
 
-Una palabra que no es un comando (por ejemplo `hopdeck unistall`) da un error con una sugerencia, en vez de abrir Hopdeck.
+Cada comando tiene **una sola forma**. Cualquier otra palabra, o una variante como `--uninstall`, `desinstalar` o `unistall`, da un error que sugiere el comando correcto (`uninstall`) y no abre Hopdeck.
 
 ## Compatibilidad
 
