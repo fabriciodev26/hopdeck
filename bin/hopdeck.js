@@ -1449,12 +1449,13 @@ function load(keepKey) {
 const extraArgs = [];
 
 /** Busca el ejecutable real de claude en el PATH (no depende de funciones del shell). */
-function findClaude() {
+/** Busca un programa en el PATH (por defecto `claude`). */
+function findClaude(name = 'claude') {
   const exts = WIN ? (process.env.PATHEXT || '.EXE;.CMD;.BAT').split(';').concat(['']) : [''];
   for (const dir of (process.env.PATH || '').split(path.delimiter)) {
     if (!dir) continue;
     for (const ext of exts) {
-      const f = path.join(dir, 'claude' + ext.toLowerCase());
+      const f = path.join(dir, name + ext.toLowerCase());
       try { if (fs.statSync(f).isFile()) return f; } catch { /* siguiente */ }
     }
   }
@@ -1628,7 +1629,7 @@ function doctor() {
   else bad(T.dcNone, WIN ? T.dcNoneWin : T.dcNoneUnix);
   let wrapped = false;
   for (const t of targets()) { try { if (fs.readFileSync(t.file, 'utf8').includes(MARK_A)) wrapped = true; } catch { /* */ } }
-  wrapped ? ok(T.dcShort) : bad(T.dcNoShort, T.dcNoShortHint);
+  wrapped ? ok(T.dcShort) : bad(T.dcNoShort, findClaude('hopdeck') ? T.dcNoShortHint : T.dcNoCmdHint); // sin el comando en el PATH, "hopdeck install" no existe todavía
   ok(T.dcPrefs(shortPath(CFG_FILE), shortPath(CACHE_FILE)));
   if (process.env.WT_SESSION) { // dentro de Windows Terminal: Ctrl+V solo pega texto y no deja pegar imágenes
     const f = wtSettingsFile(); let st = null;
@@ -1800,7 +1801,7 @@ if (require.main === module) main();
 else {
   // al hacer require() (pruebas automáticas) no se ejecuta nada: solo se exponen las piezas puras
   module.exports = {
-    cw, strW, fit, clean, imageExt, exportImages, safeId, install, backupProfile, ago, tidy, fuzzy, wrapText, parseKeys, KEYMAP, isType, T, S, CFG, E,
+    cw, strW, fit, clean, imageExt, exportImages, safeId, findClaude, install, backupProfile, ago, tidy, fuzzy, wrapText, parseKeys, KEYMAP, isType, T, S, CFG, E,
     readSession, buildProject, scan, scanAsync, finishScan, sortProjects, projectDirs,
     view, flatList, stripBlock, SNIP, MARK_A, MARK_B, toggleProject, cacheLoad, selNorm,
     decodePNG, decodeImage, scaleBox, fitSize, halfBlocks, collectImages, extractImages,

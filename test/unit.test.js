@@ -407,3 +407,14 @@ test('i18n: español e inglés tienen las mismas claves y todas las funciones de
     delete require.cache[file];
   }
 });
+
+test('findClaude: encuentra un programa en el PATH por su nombre y no inventa los que faltan', () => {
+  const d = tmp('hopdeck-path-'); const prev = process.env.PATH, prevExt = process.env.PATHEXT;
+  const exe = process.platform === 'win32' ? 'programa-de-prueba.cmd' : 'programa-de-prueba';
+  fs.writeFileSync(path.join(d, exe), process.platform === 'win32' ? '@echo off\r\n' : '#!/bin/sh\n'); if (process.platform !== 'win32') fs.chmodSync(path.join(d, exe), 0o755);
+  process.env.PATH = d + path.delimiter + prev;
+  try {
+    assert.ok(hd.findClaude('programa-de-prueba'), 'lo encuentra');
+    assert.equal(hd.findClaude('no-existe-este-programa'), null, 'devuelve null si no está');
+  } finally { process.env.PATH = prev; if (prevExt === undefined) delete process.env.PATHEXT; else process.env.PATHEXT = prevExt; }
+});
