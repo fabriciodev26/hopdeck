@@ -130,7 +130,7 @@ It always starts at `~`. Recently used folders appear on top (`↻ recent`).
 
 ![Floating box with the image when hovering [Image #1]](docs/screenshots/04-hover-imagen.svg)
 
-- If a chat shows `[Image #3]` (an image you already sent), **hover it** and a box shows that image without covering the rest of the chat.
+- If a chat shows `[Image #3]` (an image you already sent), **hover it** and a quick preview appears without covering the rest of the chat. A terminal can only draw a small version (two pixels per character), so a screenshot with text is not legible: **click the marker** and it opens full size, at its real resolution, in your system's image viewer.
 - `i` / `F7` opens a **gallery** with all the conversation's images (`← →` navigate, `o` opens it in the system viewer, `Esc` closes).
 - An image you just pasted and have not sent yet **cannot** be shown: it is not in the history yet.
 

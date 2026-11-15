@@ -1,5 +1,10 @@
 # Cambios
 
+## 1.2.4
+
+### Nuevo
+- **Clic en `[Image #N]` abre la imagen en grande** en el visor de imágenes del sistema, a su tamaño real. La vista rápida del terminal solo puede dibujar dos píxeles por carácter: una captura de pantalla de 1917 px de ancho quedaba en unos 50 y no se podía leer. Arrastrar para copiar texto y hacer clic en otro texto siguen igual. El cuadro del hover avisa («clic: abrir en grande») y es algo más grande.
+
 ## 1.2.3
 
 ### Cambiado

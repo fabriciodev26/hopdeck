@@ -130,7 +130,7 @@ Empieza siempre en `~`. Las carpetas que usaste hace poco aparecen arriba (`↻ 
 
 ![Cuadro flotante con la imagen al pasar el cursor por [Image #1]](docs/screenshots/04-hover-imagen.svg)
 
-- Si en un chat ves `[Image #3]` (una imagen que ya enviaste), **pasa el cursor por encima** y aparece un cuadro con esa imagen, sin tapar el resto del chat.
+- Si en un chat ves `[Image #3]` (una imagen que ya enviaste), **pasa el cursor por encima** y aparece una vista rápida, sin tapar el resto del chat. En un terminal solo se puede dibujar una versión pequeña (dos píxeles por carácter), así que una captura con texto no se lee: **haz clic sobre la marca** y se abre en grande, a su tamaño real, en el visor de imágenes de tu sistema.
 - `i` / `F7` abre una **galería** con todas las imágenes de la conversación (`← →` navegan, `o` la abre en el visor del sistema, `Esc` cierra).
 - Una imagen recién pegada y aún sin enviar **no** se puede mostrar: todavía no está en el historial.
 

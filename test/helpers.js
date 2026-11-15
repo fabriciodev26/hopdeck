@@ -115,8 +115,8 @@ function launchHub({ root, fx, env: extra = {}, home = null, cwd = null, cols = 
   };
   /** Evento de ratón SGR (x, y en base 1). b: 0 clic, 35 movimiento sin botón, 64/65 rueda arriba/abajo. */
   h.mouse = (b, x, y, type = 'M') => h.write(`\x1b[<${b};${x};${y}${type}`);
-  /** Posición (base 1) del texto `needle` en pantalla, o null. */
-  h.find = (needle) => { const ls = h.lines(); for (let y = 0; y < ls.length; y++) { const x = ls[y].indexOf(needle); if (x >= 0) return { x: x + 1, y: y + 1 }; } return null; };
+  /** Posición (base 1) del texto `needle` en pantalla (a partir de la columna `desde`), o null. */
+  h.find = (needle, desde = 0) => { const ls = h.lines(); for (let y = 0; y < ls.length; y++) { const x = ls[y].indexOf(needle, desde); if (x >= 0) return { x: x + 1, y: y + 1 }; } return null; };
   h.kill = () => { dead = true; try { p.kill(); } catch { /* */ } };
   /** Cierra tras dejar que terminen las escrituras pendientes (evita un EAGAIN asíncrono al matar el PTY). */
   h.close = async () => { await sleep(200); h.kill(); await sleep(50); };

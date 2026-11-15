@@ -906,6 +906,7 @@ async function imagesOf(x) {
 
 /** Abre un archivo o carpeta con el programa por defecto del sistema. */
 function openExternal(target) {
+  if (process.env.HOPDECK_OPEN_LOG) { try { fs.appendFileSync(process.env.HOPDECK_OPEN_LOG, target + '\n'); } catch { /* */ } return; } // pruebas: no se abre ningún visor
   const quiet = (cmd, args) => { try { const c = cp.spawn(cmd, args, { stdio: 'ignore', detached: true, windowsHide: true }); c.on('error', () => {}); c.unref(); } catch { /* */ } };
   if (WIN) quiet('cmd', ['/c', 'start', '', target]);
   else if (process.platform === 'darwin') quiet('open', [target]);
@@ -1003,7 +1004,7 @@ function hoverPopup(hv, rw, th) {
   const d = g.dec.get(0), lab = ` [Image #${hv.n}] `;
   let rows, tw;
   if (d && d.rgba) {
-    const sz = fitSize(d.w, d.h, Math.max(8, Math.min(rw - 4, 48)), Math.max(2, Math.min(th - 4, 16)) * 2), key = `${sz.tw}x${sz.th}`;
+    const sz = fitSize(d.w, d.h, Math.max(8, Math.min(rw - 6, 96)), Math.max(2, Math.min(th - 6, 18)) * 2), key = `${sz.tw}x${sz.th}`;
     let hb = g.cache.get(key);
     if (!hb) { hb = halfBlocks(scaleBox(d.rgba, d.w, d.h, sz.tw, sz.th), sz.tw, sz.th); g.cache.clear(); g.cache.set(key, hb); }
     rows = hb; tw = sz.tw;
@@ -1014,12 +1015,39 @@ function hoverPopup(hv, rw, th) {
   }
   const label = strW(lab) <= tw - 1 ? lab : '', b = C.accent;
   const box = [b + '╭─' + label + '─'.repeat(Math.max(0, tw - 1 - strW(label))) + '╮' + R,
-    ...rows.map((r) => b + '│' + R + r + b + '│' + R), b + '╰' + '─'.repeat(tw) + '╯' + R];
+    ...rows.map((r) => b + '│' + R + r + b + '│' + R),
+    (() => { const h = ` ${T.imgClickHint} `; return strW(h) <= tw - 1 ? b + '╰─' + C.dim + h + b + '─'.repeat(tw - 1 - strW(h)) + '╯' + R : b + '╰' + '─'.repeat(tw) + '╯' + R; })()];
   const bw = tw + 2, bh = box.length, left = clamp(hv.at.x, 0, Math.max(0, rw - bw));
   let top = hv.at.y + 1; // debajo de la marca; si no cabe, encima; si tampoco, pegado al borde
   if (top + bh > th) top = hv.at.y - bh;
   if (top < 0) top = Math.max(0, th - bh);
   return { left, top, bw, rows: box };
+}
+
+/** La imagen que corresponde a "[Image #n]" en la conversación de este chat, o null si aún no está en el historial. */
+async function imageForMarker(sh, n) {
+  try {
+    const sess = await shownSession(sh);
+    if (!sess) return null;
+    const imgs = await imagesOf(sess);
+    let img = imgs.find((im) => im.n === n) || (imgs.some((im) => im.n) ? null : imgs[n - 1]) || null;
+    if (!img && imgs.length >= maxImages()) img = await images.findImageByNumber(sess.file, n); // pasó el límite de la galería: se busca en todo el archivo
+    return img;
+  } catch { return null; }
+}
+
+/**
+ * Clic en un "[Image #N]": abre esa imagen en el visor del sistema, a su tamaño real. En el terminal solo se puede dibujar una
+ * vista rápida (dos píxeles por carácter): una captura de pantalla con texto de 1917 px de ancho queda en unos 50 y no se lee.
+ */
+async function openMarkerImage(sh, n) {
+  const img = await imageForMarker(sh, n);
+  const note = (t) => { E.note = { t, until: Date.now() + 2500 }; scheduleRender(); };
+  if (!img) return note(T.hoverMiss(n));
+  const { files } = exportImages([img]);
+  if (!files[0]) return note(T.imgNoPrev); // no es una imagen reconocible: no se abre
+  openExternal(files[0]);
+  note(T.imgOpened(n));
 }
 
 function hoverChat(sh, x, y) {
@@ -1035,15 +1063,7 @@ function hoverChat(sh, x, y) {
   const hv = { n, k, at, g: { project: sh.project, title: sh.title, images: [], i: 0, loading: true, pending: false, dec: new Map(), cache: new Map() } };
   E.hover = hv; scheduleRender();
   (async () => {
-    let img = null;
-    try {
-      const sess = await shownSession(sh);
-      if (sess) {
-        const imgs = await imagesOf(sess);
-        img = imgs.find((im) => im.n === n) || (imgs.some((im) => im.n) ? null : imgs[n - 1]) || null;
-        if (!img && imgs.length >= maxImages()) img = await images.findImageByNumber(sess.file, n); // pasó el límite de la galería: se busca en todo el archivo
-      }
-    } catch { img = null; }
+    const img = await imageForMarker(sh, n);
     if (E.hover !== hv) return; // el cursor ya se fue
     if (!img) { hv.g.loading = false; E.note = { t: T.hoverMiss(n), until: Date.now() + 2000 }; return scheduleRender(); }
     hv.g.images = [img]; hv.g.loading = false; scheduleRender();
@@ -1340,6 +1360,10 @@ function onMouse(b, x, y, type) {
   if ((b & 32) && (b & 3) === 0) { if (E.sel && E.sel.down) { E.sel.b = cell(); render(); } return; } // arrastre
   if (type === 'm') { // soltar: copiar la selección
     const sl = E.sel; E.sel = null;
+    if (sl && sl.down && sl.a.x === sl.b.x && sl.a.y === sl.b.y && sh && sh.ready) { // un clic sin arrastrar: si es sobre un [Image #N], se abre la imagen
+      const hit = imageMarkerAt(sh.term, sl.a.y, sl.a.x);
+      if (hit) openMarkerImage(sh, hit.n);
+    }
     if (sl && sl.down && (sl.a.x !== sl.b.x || sl.a.y !== sl.b.y) && sh) {
       const t = selText(sh, sl);
       if (t) { copyText(t); E.note = { t: T.copied(t.length), until: Date.now() + 3000 }; }

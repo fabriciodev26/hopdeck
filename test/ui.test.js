@@ -103,6 +103,7 @@ test('hover: pasar el cursor por la lista previsualiza la conversación y por [I
     const m1 = h.find('[Image #1]'); assert.ok(m1);
     h.mouse(35, m1.x + 3, m1.y);
     await h.waitFor(/╭─ \[Image #1\] ─*╮/, 'hover sobre [Image #1] abre un cuadro con la imagen');
+    assert.match(h.screen(), /clic: abrir en grande/, 'el cuadro avisa de que un clic la abre en grande');
     await h.waitFor(/▀/, 'la imagen se dibuja con medios bloques (primero el cuadro muestra un marcador mientras se decodifica)');
     assert.match(h.screen(), /FAKE CLAUDE/, 'el cuadro es flotante: el chat sigue visible alrededor');
     assert.match(h.screen(), /aquí va \[Image #1\]/, 'la línea de la marca no se tapa');
@@ -230,4 +231,36 @@ test('hopdeck uninstall en una terminal: pregunta, Enter cancela sin tocar nada 
   assert.ok(!fs.readFileSync(perfil, 'utf8').includes('>>> hopdeck >>>'), 'quita el atajo');
   assert.ok(fs.readFileSync(perfil, 'utf8').startsWith('export A=1'), 'sin tocar el resto del perfil');
   assert.ok(!fs.existsSync(cfg) && !fs.existsSync(cache), 'y borra las preferencias y la caché');
+});
+
+// ───────────── clic en [Image #N]: abrir la imagen en grande ─────────────
+test('clic en [Image #N] abre la imagen en el visor; arrastrar o hacer clic en otro texto no abre nada', opts, async () => {
+  const root = tmp('hopdeck-ui-click-'); const log = path.join(root, 'abiertos.log');
+  const png = makePNG(16, 8, (x, y) => [x * 15, y * 30, 200, 255]).toString('base64');
+  const fx = makeFixture(root, [alpha({ first: '[Image #1] mira esta imagen', image: png })]);
+  const h = launchHub({ root, fx, cwd: fx.cwds.alpha, env: { FAKE_PRINT: 'aquí va [Image #1] y fin', HOPDECK_OPEN_LOG: log } });
+  const abiertos = () => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').filter(Boolean) : []);
+  try {
+    await h.waitFor(/Sesión dos/, 'lista');
+    const uno = h.find('Sesión uno'); h.mouse(0, 5, uno.y); h.mouse(0, 5, uno.y, 'm');
+    await h.waitFor(/aquí va \[Image #1\]/, 'chat con la marca', 20000);
+    const m = h.find('[Image #1]', 40);
+    const dentro = (dx) => m.x + dx;
+
+    // una selección arrastrada sobre la marca copia texto, no abre la imagen
+    h.mouse(0, dentro(0), m.y); h.mouse(32, dentro(6), m.y); h.mouse(0, dentro(6), m.y, 'm');
+    await h.sleep(700); assert.equal(abiertos().length, 0, 'arrastrar no abre nada');
+    // un clic en texto que no es una marca tampoco
+    const otro = h.find('FAKE CLAUDE'); h.mouse(0, otro.x + 2, otro.y); h.mouse(0, otro.x + 2, otro.y, 'm');
+    await h.sleep(700); assert.equal(abiertos().length, 0, 'clic en otro texto no abre nada');
+
+    // un clic sobre la marca abre la imagen, a su tamaño real
+    h.mouse(0, dentro(3), m.y); h.mouse(0, dentro(3), m.y, 'm');
+    for (let i = 0; i < 100 && !abiertos().length; i++) await h.sleep(50);
+    assert.equal(abiertos().length, 1, 'el clic sobre [Image #1] abre la imagen');
+    const f = abiertos()[0];
+    assert.match(f, /imagen-1\.png$/, 'con extensión de imagen');
+    assert.ok(fs.existsSync(f) && fs.readFileSync(f).subarray(1, 4).toString() === 'PNG', 'es la imagen original, no una vista reducida');
+    await h.waitFor(/\[Image #1\] abierta en el visor/, 'aviso en la barra');
+  } finally { await h.close(); }
 });
