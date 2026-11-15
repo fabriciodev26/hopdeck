@@ -619,3 +619,38 @@ test('shownSession: un chat nuevo sin enlazar solo toma una conversación creada
     assert.ok(s && s.id, 'con una conversación posterior a la apertura, la toma');
   } finally { Object.assign(hd.S, saved); }
 });
+
+// ───────────── comandos: una errata no abre Hopdeck ni se pasa a claude ─────────────
+test('commandName / suggestCommand: reconocen comandos, variantes con guiones y alias, y sugieren ante erratas', () => {
+  for (const [entrada, esperado] of [['install', 'install'], ['uninstall', 'uninstall'], ['--uninstall', 'uninstall'], ['UNINSTALL', 'uninstall'], ['desinstalar', 'uninstall'], ['remove', 'uninstall'], ['--doctor', 'doctor'], ['--help', 'help'], ['ayuda', 'help'], ['version', '--version'], ['list', '--list']])
+    assert.equal(hd.commandName(entrada), esperado, entrada);
+  for (const no of ['unistall', '--model', 'opus', '-p', '', undefined]) assert.equal(hd.commandName(no), null, String(no));
+  assert.equal(hd.suggestCommand('unistall'), 'uninstall', 'la errata del historial real');
+  assert.equal(hd.suggestCommand('instal'), 'install');
+  assert.equal(hd.suggestCommand('doctr'), 'doctor');
+  assert.equal(hd.suggestCommand('xyzxyzxyz'), null, 'si no se parece a nada, no inventa');
+});
+
+test('línea de comandos: una palabra mal escrita da error (no abre Hopdeck) y --uninstall sí desinstala', () => {
+  const cp = require('child_process'); const d = tmp('hopdeck-cli-');
+  const perfil = path.join(d, 'perfil.sh'); fs.writeFileSync(perfil, 'export A=1\n');
+  const env = { ...process.env, HOPDECK_CONFIG: path.join(d, 'cfg.json'), HOPDECK_CACHE: path.join(d, 'cache.json'), HOPDECK_PROFILES: perfil, HOPDECK_LANG: 'es', HOPDECK_NOPROMPT: '1', NO_COLOR: '1' };
+  const run = (...args) => cp.spawnSync(process.execPath, [path.join(__dirname, '..', 'bin', 'hopdeck.js'), ...args], { env, encoding: 'utf8', timeout: 30000 });
+
+  const mal = run('unistall');
+  assert.equal(mal.status, 2, 'sale con error');
+  assert.match(mal.stderr, /Comando desconocido: "unistall"/);
+  assert.match(mal.stderr, /¿Quisiste decir "uninstall"\?/, 'sugiere el comando correcto');
+  assert.doesNotMatch(mal.stdout, /Hopdeck|Claude/i, 'y no abre ni lista nada');
+
+  assert.equal(run('--install').status, 0, '--install vale como install');
+  assert.ok(fs.readFileSync(perfil, 'utf8').includes(hd.MARK_A), 'instaló el atajo en el perfil de prueba');
+  assert.equal(run('--uninstall').status, 0, '--uninstall vale como uninstall');
+  assert.ok(!fs.readFileSync(perfil, 'utf8').includes(hd.MARK_A), 'y lo quitó');
+  assert.equal(run('desinstalar').status, 0, 'también en español');
+
+  const flag = run('--model', 'opus'); // lo que empieza por - sigue pasando a claude (sin terminal imprime la lista)
+  assert.equal(flag.status, 0, 'las opciones de claude no se rechazan');
+  assert.doesNotMatch(flag.stderr, /desconocido/);
+  assert.match(run('--version').stdout, /^\d+\.\d+\.\d+/, '--version sigue funcionando');
+});

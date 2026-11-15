@@ -1906,8 +1906,31 @@ function tutorial(afterInstall) {
 }
 
 // ───────────────────────── entrada ─────────────────────────
+// ── Comandos: una errata no debe abrir Hopdeck (antes "hopdeck unistall" lo abría y le pasaba la palabra a claude como argumento) ──
+const COMMANDS = ['install', 'uninstall', 'doctor', 'help'];
+const COMMAND_ALIASES = { desinstalar: 'uninstall', remove: 'uninstall', instalar: 'install', ayuda: 'help', diagnostico: 'doctor', version: '--version', list: '--list' };
+/** Nombre de comando (también como --uninstall o en español); null si no lo es. */
+function commandName(arg) {
+  const w = String(arg || '').replace(/^-{1,2}/, '').toLowerCase();
+  return COMMANDS.includes(w) ? w : COMMAND_ALIASES[w] || null;
+}
+const editDistance = (a, b) => { const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]); for (let j = 1; j <= b.length; j++) d[0][j] = j; for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return d[a.length][b.length]; };
+/** El comando que más se parece a una palabra mal escrita (hasta 2 letras de diferencia), o null. */
+function suggestCommand(word) {
+  const w = String(word || '').toLowerCase(); let best = null, bd = 3;
+  for (const c of [...COMMANDS, ...Object.keys(COMMAND_ALIASES)]) { const d = editDistance(w, c); if (d < bd) { bd = d; best = COMMAND_ALIASES[c] || c; } }
+  return best;
+}
+
 function main() {
-  const [cmd, ...rest] = process.argv.slice(2);
+  let [cmd, ...rest] = process.argv.slice(2);
+  const named = commandName(cmd);
+  if (named) cmd = named; // --uninstall, desinstalar… valen como uninstall
+  else if (cmd && !cmd.startsWith('-')) { // una palabra suelta que no es comando: es una errata, no algo que pasar a claude
+    const sug = suggestCommand(cmd);
+    console.error(`${C.warn}${T.unknownCmd(cmd)}${R}${sug ? ' ' + T.didYouMean(sug) : ''}\n${C.dim}${T.cmdList}${R}`);
+    process.exit(2);
+  }
   if (cmd === 'install') { install(false); markAsked(); }
   else if (cmd === 'uninstall') { install(true); markAsked(); }
   else if (cmd === 'help' || cmd === '--help' || cmd === '-h') tutorial(false);
@@ -1933,7 +1956,7 @@ else {
   module.exports = {
     cw, strW, fit, clean, imageExt, exportImages, safeId, findClaude, install, backupProfile, ago, tidy, fuzzy, wrapText, parseKeys, KEYMAP, isType, T, S, CFG, E,
     readSession, buildProject, scan, scanAsync, finishScan, sortProjects, projectDirs,
-    view, flatList, stripBlock, offerShortcut, SNIP, MARK_A, MARK_B, toggleProject, cacheLoad, selNorm,
+    view, flatList, stripBlock, offerShortcut, commandName, suggestCommand, SNIP, MARK_A, MARK_B, toggleProject, cacheLoad, selNorm,
     decodePNG, decodeImage, scaleBox, fitSize, halfBlocks, collectImages, extractImages,
     editBuf, normalizeKeys, stripJsonc, wtCtrlV, fbNames, fbOpen, fbRows, sidebarMouse, gitBranch, imageMarkerAt, shownSession, linkChats, findImageByNumber: images.findImageByNumber,
   };

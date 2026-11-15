@@ -148,8 +148,20 @@ It always starts at `~`. Recently used folders appear on top (`↻ recent`).
 ### More
 
 - The project's **git branch** is shown and the list refreshes itself.
-- `hopdeck --list` prints the projects as plain text. `hopdeck <arguments>` passes them to `claude` when opening chats (for example `hopdeck --model opus`).
 - Available in **Spanish and English** (follows the system language).
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `hopdeck` | Opens Hopdeck |
+| `hopdeck install` / `hopdeck uninstall` | Installs or removes the shortcut so that `claude` opens Hopdeck |
+| `hopdeck doctor` | Checks your setup and tells you how to fix whatever is missing |
+| `hopdeck --list` | Lists the projects as plain text |
+| `hopdeck --version` | Shows the version |
+| `hopdeck --model opus` | Anything starting with `-` is passed to `claude` when opening chats |
+
+A word that is not a command (for example `hopdeck unistall`) gives an error with a suggestion instead of opening Hopdeck.
 
 ## Compatibility
 

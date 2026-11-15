@@ -8,6 +8,7 @@
 - **Imágenes duplicadas en la galería:** Claude Code guarda cada imagen otra vez en una línea interna (`api-request-blob`). Ya no se cuentan dos veces.
 - **Hover de imagen en un chat nuevo:** si todavía no se había enlazado con su conversación, podía mostrar la imagen de otra conversación del mismo proyecto cuando coincidía el número. Ahora solo toma una conversación creada después de abrir el chat.
 - **Detección de `[Image #N]`:** calcula bien la columna con caracteres anchos delante (emoji, CJK) y acepta espacios no separables.
+- **Una errata en un comando ya no abre Hopdeck:** `hopdeck unistall` abría la interfaz y le pasaba la palabra a `claude` como argumento, que se aplicaba a los chats que abrieras. Ahora una palabra que no es un comando da un error con una sugerencia («¿Quisiste decir "uninstall"?»). También se aceptan `--uninstall`, `--install`, `--doctor` y los alias `desinstalar`, `instalar`, `ayuda`, `version` y `list`. Lo que empieza por `-` sigue pasando a `claude`.
 - **Pregunta del primer arranque:** al responder, la pregunta se borra de la pantalla y deja una línea de resumen (antes se quedaba escrita como si siguiera pendiente), y el texto aclara que responder que no no impide abrir Hopdeck: el atajo solo afecta a lo que ocurre al escribir `claude`.
 - **Aviso de tamaño mínimo:** decía 60×12 y el programa exige 70×12.
 

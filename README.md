@@ -148,8 +148,20 @@ Empieza siempre en `~`. Las carpetas que usaste hace poco aparecen arriba (`↻ 
 ### Otros detalles
 
 - Se muestra la **rama de git** del proyecto y la lista se refresca sola.
-- `hopdeck --list` imprime los proyectos en texto plano. `hopdeck <argumentos>` pasa esos argumentos a `claude` al abrir chats (por ejemplo `hopdeck --model opus`).
 - Disponible en **español e inglés** (sigue el idioma del sistema).
+
+## Comandos
+
+| Comando | Qué hace |
+|---|---|
+| `hopdeck` | Abre Hopdeck |
+| `hopdeck install` / `hopdeck uninstall` | Instala o quita el atajo para que `claude` abra Hopdeck |
+| `hopdeck doctor` | Revisa tu instalación y dice cómo arreglar lo que falte |
+| `hopdeck --list` | Lista los proyectos en texto plano |
+| `hopdeck --version` | Muestra la versión |
+| `hopdeck --model opus` | Lo que empiece por `-` se pasa a `claude` al abrir chats |
+
+Una palabra que no es un comando (por ejemplo `hopdeck unistall`) da un error con una sugerencia, en vez de abrir Hopdeck.
 
 ## Compatibilidad
 
