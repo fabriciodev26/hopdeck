@@ -2,7 +2,8 @@
 'use strict';
 // Abre Hopdeck con DATOS DE EJEMPLO (proyectos ficticios, una imagen de muestra y un repositorio de juguete) para grabar
 // el GIF o hacer capturas sin mostrar tus carpetas reales. No lee ni escribe tu historial ni tu configuración.
-//   node scripts/demo.js          →  abre el hub en esta misma terminal (Enter abre un chat de muestra, no el claude real)
+//   node scripts/demo.js          →  abre el hub en esta misma terminal (Enter en "Carrito de compras con cupones" abre un chat de muestra
+//                                    con un [Image #1]: pasa el cursor por encima para ver la imagen)
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -41,7 +42,9 @@ const pathKey = Object.keys(process.env).find((k) => k.toLowerCase() === 'path')
 const env = {
   ...process.env, [pathKey]: bin + path.delimiter + process.env[pathKey],
   CLAUDE_CONFIG_DIR: fx.cfg, HOPDECK_CONFIG: path.join(root, 'cfg.json'), HOPDECK_CACHE: path.join(root, 'cache.json'),
-  HOPDECK_NOPROMPT: '1', HOPDECK_LANG: process.env.HOPDECK_LANG || 'es', HOPDECK_EMBED: '1', FAKE_BANNER: 'chat de ejemplo',
+  HOPDECK_NOPROMPT: '1',
+  // el chat de muestra menciona [Image #1]: pasa el cursor por encima para ver la imagen
+  FAKE_PRINT: ['', '> Mira esta captura de la tienda: [Image #1]', '', 'Veo la maqueta de la página: titular, texto y el botón de compra.', '¿Quieres que cambie el color del botón?'].join('\r\n'), HOPDECK_LANG: process.env.HOPDECK_LANG || 'es', HOPDECK_EMBED: '1', FAKE_BANNER: 'chat de ejemplo',
   HOME: root, USERPROFILE: root,
 };
 delete env.HOPDECK_INSIDE; delete env.TMUX;
