@@ -22,6 +22,8 @@ La lista de proyectos queda a la izquierda y la conversación a la derecha.
   <img alt="Vista dividida: lista de proyectos a la izquierda y el chat a la derecha" src="docs/screenshots/02-vista-dividida.svg">
 </picture>
 
+<p align="center"><img alt="Hopdeck en acción: vista previa, chat, imagen al pasar el cursor y panel de git" src="docs/demo.gif" width="900"></p>
+
 > **Proyecto independiente de la comunidad.** No está afiliado, respaldado ni patrocinado por Anthropic.
 > "Claude" y "Claude Code" son marcas de Anthropic, PBC. Hopdeck solo lee el historial local que Claude Code ya guarda en tu equipo y lanza el comando `claude` que tú tengas instalado.
 
