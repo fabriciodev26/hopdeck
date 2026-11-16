@@ -783,6 +783,7 @@ function onKeyTree(raw) {
       const key = e && e.t === 's' && S.live.has(e.s.id) ? (chatKeyOf(e.s.id) || e.s.id) : e && e.t === 'l' ? e.key : EMBED ? E.shown : null;
       return key ? closeChat(key) : flash(T.notOpen);
     }
+    case 'b': return toggleGit(); // panel de git (F8 en macOS pide Fn: por defecto son las teclas multimedia)
     case 'i': case 'f7':
       if (e && e.t === 's') {
         if (EMBED) return openGallery(e.p.name, e.s);

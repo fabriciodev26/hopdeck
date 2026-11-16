@@ -359,5 +359,8 @@ test('panel de git: F8 lo abre con la rama, los cambios y los cambios de rama; F
     h.write('\x1b[19~');                               // F8 otra vez
     await h.waitGone(/Ramas recientes/, 'el panel se cierra');
     assert.match(h.screen(), /hola desde el chat/);
+    h.write('\x1bOP'); await h.sleep(300);                // F1: foco en la lista
+    h.write('b');                                      // la letra `b` hace lo mismo que F8 (en macOS F8 suele necesitar Fn)
+    await h.waitFor(/Ramas recientes/, 'la tecla b abre el panel');
   } finally { await h.close(); }
 });

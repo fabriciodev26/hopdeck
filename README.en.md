@@ -96,7 +96,7 @@ You can say no and always use `hopdeck`. If you change your mind: `hopdeck short
 | `[` `]` | Narrow / widen the list |
 | `F3` | Turn the mouse off/on (to select text with the terminal) |
 | `F4` | Hide/show the list to give the chat the full width |
-| `F8` | Show/hide the git panel (third panel) |
+| `F8` · `b` | Show/hide the git panel (third panel). `b` works with the focus on the list; on macOS `F8` usually needs `Fn` |
 | `r` · `?` · `q` | Reload · help · quit |
 
 Every text box supports a cursor: `←` `→`, `Home`/`End`, `Delete`, and `Ctrl+U` to clear up to the start.
@@ -152,7 +152,7 @@ It always starts at `~`. Recently used folders appear on top (`↻ recent`).
 
 ### Git panel
 
-`F8` opens a read-only **third panel** to the right of the chat with the git state of the chat's folder (or the selected project):
+`F8` (or `b` with the focus on the list) opens a read-only **third panel** to the right of the chat with the git state of the chat's folder (or the selected project):
 
 - the **current branch**, with how far ahead or behind the remote it is;
 - the **uncommitted changes** (modified, new or deleted files);

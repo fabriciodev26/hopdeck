@@ -96,7 +96,7 @@ Puedes decir que no y usar siempre `hopdeck`. Si cambias de idea: `hopdeck short
 | `[` `]` | Estrechar / ensanchar la lista |
 | `F3` | Apagar/encender el ratón (para seleccionar texto con el terminal) |
 | `F4` | Ocultar/mostrar la lista para dar todo el ancho al chat |
-| `F8` | Mostrar/ocultar el panel de git (tercer panel) |
+| `F8` · `b` | Mostrar/ocultar el panel de git (tercer panel). `b` funciona con el foco en la lista; en macOS `F8` suele necesitar `Fn` |
 | `r` · `?` · `q` | Recargar · ayuda · salir |
 
 En todas las cajas de texto puedes mover el cursor con `←` `→`, ir al principio/final con `Inicio`/`Fin`, borrar con `Supr` y vaciar hasta el inicio con `Ctrl+U`.
@@ -152,7 +152,7 @@ Empieza siempre en `~`. Las carpetas que usaste hace poco aparecen arriba (`↻ 
 
 ### Panel de git
 
-`F8` abre un **tercer panel** a la derecha del chat, de solo lectura, con el estado git de la carpeta del chat (o del proyecto seleccionado):
+`F8` (o `b` con el foco en la lista) abre un **tercer panel** a la derecha del chat, de solo lectura, con el estado git de la carpeta del chat (o del proyecto seleccionado):
 
 - la **rama actual**, con lo que lleva por delante o por detrás del remoto;
 - los **cambios sin guardar** (archivos modificados, nuevos o borrados);
