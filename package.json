@@ -44,7 +44,8 @@
   "scripts": {
     "test": "node --test test/unit.test.js test/e2e.test.js test/ui.test.js",
     "doctor": "node bin/hopdeck.js doctor",
-    "screenshots": "node scripts/screenshots.js"
+    "screenshots": "node scripts/screenshots.js",
+    "demo": "node scripts/demo.js"
   },
   "dependencies": {
     "@lydell/node-pty": "1.2.0-beta.18",
