@@ -17,7 +17,10 @@
 Type `claude` in your terminal and **pick which project and conversation to continue**, without leaving and without `cd`.
 The project list stays on the left and the conversation on the right.
 
-![Split view: project list on the left, chat on the right](docs/screenshots/02-vista-dividida.svg)
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/02-vista-dividida-light.svg">
+  <img alt="Split view: project list on the left, chat on the right" src="docs/screenshots/02-vista-dividida.svg">
+</picture>
 
 > **Independent community project.** Not affiliated with, endorsed or sponsored by Anthropic.
 > "Claude" and "Claude Code" are trademarks of Anthropic, PBC. Hopdeck only reads the local history that Claude Code already keeps on your machine and launches the `claude` command you have installed.
@@ -61,7 +64,10 @@ You can say no and always use `hopdeck`. If you change your mind: `hopdeck short
 
 ## Getting started
 
-![Project list and preview of the selected conversation](docs/screenshots/01-lista-y-vista-previa.svg)
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/01-lista-y-vista-previa-light.svg">
+  <img alt="Project list and preview of the selected conversation" src="docs/screenshots/01-lista-y-vista-previa.svg">
+</picture>
 
 1. Pick a project with `↑` `↓` or by hovering it with the mouse.
 2. `→` or `⏎` expands its conversations. While you move, the right pane shows **a preview**.
@@ -102,7 +108,10 @@ With no chat open, the right pane shows the last messages of the selected conver
 
 ### Pick a folder
 
-![Folder picker](docs/screenshots/03-selector-de-carpetas.svg)
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/03-selector-de-carpetas-light.svg">
+  <img alt="Folder picker" src="docs/screenshots/03-selector-de-carpetas.svg">
+</picture>
 
 Press `o` to open a chat in **any folder**, with or without history, without typing paths:
 
@@ -122,13 +131,19 @@ It always starts at `~`. Recently used folders appear on top (`↻ recent`).
 
 ### Quick jump
 
-![Quick jump with Ctrl+P](docs/screenshots/05-salto-rapido.svg)
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/05-salto-rapido-light.svg">
+  <img alt="Quick jump with Ctrl+P" src="docs/screenshots/05-salto-rapido.svg">
+</picture>
 
 `Ctrl+P` searches **every** conversation of **every** project (title, project and first message). `⏎` opens it directly.
 
 ### Images in the chat
 
-![Floating box with the image when hovering [Image #1]](docs/screenshots/04-hover-imagen.svg)
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/04-hover-imagen-light.svg">
+  <img alt="Floating box with the image when hovering [Image #1]" src="docs/screenshots/04-hover-imagen.svg">
+</picture>
 
 - If a chat shows `[Image #3]` (an image you already sent), **hover it** and a quick preview appears without covering the rest of the chat. A terminal can only draw a small version (two pixels per character), so a screenshot with text is not legible: **click the marker** and it opens full size, at its real resolution, in your system's image viewer.
 - `i` / `F7` opens a **gallery** with all the conversation's images (`← →` navigate, `o` opens it in the system viewer, `Esc` closes).

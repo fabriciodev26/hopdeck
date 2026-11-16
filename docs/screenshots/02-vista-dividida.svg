@@ -468,6 +468,8 @@
 <text x="43 52 61" y="50" fill="#d97757" font-weight="bold" xml:space="preserve">Hop</text>
 <text x="70 79 88 97" y="50" fill="#e8e6e3" font-weight="bold" xml:space="preserve">deck</text>
 <text x="124" y="50" fill="#808086" xml:space="preserve">5</text>
+<text x="151" y="50" fill="#7ec48f" xml:space="preserve">●</text>
+<text x="169" y="50" fill="#7ec48f" xml:space="preserve">1</text>
 <text x="520 529 538 547 556 565 574 583 592 601 610 619 628" y="50" fill="#818cf8" font-weight="bold" xml:space="preserve">tienda-online</text>
 <text x="646" y="50" fill="#e8e6e3" xml:space="preserve">›</text>
 <text x="664 673 682 691 700 709 718" y="50" fill="#e8e6e3" xml:space="preserve">Carrito</text>

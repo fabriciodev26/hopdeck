@@ -17,7 +17,10 @@
 Escribe `claude` en tu terminal y **elige en qué proyecto y conversación seguir**, sin salir y sin hacer `cd`.
 La lista de proyectos queda a la izquierda y la conversación a la derecha.
 
-![Vista dividida: lista de proyectos a la izquierda y el chat a la derecha](docs/screenshots/02-vista-dividida.svg)
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/02-vista-dividida-light.svg">
+  <img alt="Vista dividida: lista de proyectos a la izquierda y el chat a la derecha" src="docs/screenshots/02-vista-dividida.svg">
+</picture>
 
 > **Proyecto independiente de la comunidad.** No está afiliado, respaldado ni patrocinado por Anthropic.
 > "Claude" y "Claude Code" son marcas de Anthropic, PBC. Hopdeck solo lee el historial local que Claude Code ya guarda en tu equipo y lanza el comando `claude` que tú tengas instalado.
@@ -61,7 +64,10 @@ Puedes decir que no y usar siempre `hopdeck`. Si cambias de idea: `hopdeck short
 
 ## Primeros pasos
 
-![Lista de proyectos y vista previa de la conversación seleccionada](docs/screenshots/01-lista-y-vista-previa.svg)
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/01-lista-y-vista-previa-light.svg">
+  <img alt="Lista de proyectos y vista previa de la conversación seleccionada" src="docs/screenshots/01-lista-y-vista-previa.svg">
+</picture>
 
 1. Elige un proyecto con `↑` `↓` o pasando el ratón por encima.
 2. `→` o `⏎` despliega sus conversaciones. Mientras te mueves, el panel derecho muestra **una vista previa**.
@@ -102,7 +108,10 @@ Sin ningún chat abierto, el panel derecho muestra los últimos mensajes de la c
 
 ### Elegir una carpeta
 
-![Selector de carpetas](docs/screenshots/03-selector-de-carpetas.svg)
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/03-selector-de-carpetas-light.svg">
+  <img alt="Selector de carpetas" src="docs/screenshots/03-selector-de-carpetas.svg">
+</picture>
 
 Pulsa `o` para abrir un chat en **cualquier carpeta**, tenga o no historial, sin escribir rutas:
 
@@ -122,13 +131,19 @@ Empieza siempre en `~`. Las carpetas que usaste hace poco aparecen arriba (`↻ 
 
 ### Salto rápido
 
-![Salto rápido con Ctrl+P](docs/screenshots/05-salto-rapido.svg)
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/05-salto-rapido-light.svg">
+  <img alt="Salto rápido con Ctrl+P" src="docs/screenshots/05-salto-rapido.svg">
+</picture>
 
 `Ctrl+P` busca entre **todas** las conversaciones de **todos** los proyectos (título, proyecto y primer mensaje). `⏎` la abre directamente.
 
 ### Imágenes del chat
 
-![Cuadro flotante con la imagen al pasar el cursor por [Image #1]](docs/screenshots/04-hover-imagen.svg)
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/04-hover-imagen-light.svg">
+  <img alt="Cuadro flotante con la imagen al pasar el cursor por [Image #1]" src="docs/screenshots/04-hover-imagen.svg">
+</picture>
 
 - Si en un chat ves `[Image #3]` (una imagen que ya enviaste), **pasa el cursor por encima** y aparece una vista rápida, sin tapar el resto del chat. En un terminal solo se puede dibujar una versión pequeña (dos píxeles por carácter), así que una captura con texto no se lee: **haz clic sobre la marca** y se abre en grande, a su tamaño real, en el visor de imágenes de tu sistema.
 - `i` / `F7` abre una **galería** con todas las imágenes de la conversación (`← →` navegan, `o` la abre en el visor del sistema, `Esc` cierra).

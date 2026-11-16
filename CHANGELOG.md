@@ -3,6 +3,9 @@
 ## 1.2.6
 
 ### Mejorado
+- **La búsqueda resalta las coincidencias** en los nombres de proyecto y en los títulos; si una conversación aparece porque la coincidencia está dentro de su texto, lleva un `⌕`.
+- **Resumen de chats abiertos en la cabecera de la lista:** `⠋` trabajando, `✔` terminados sin ver, `●` abiertos. La ayuda (`?`) explica los símbolos.
+- **Capturas del README en claro y oscuro:** se muestra la que corresponde al tema de quien lee.
 - **Lista más legible:** el número de conversaciones de cada proyecto destaca y se separa de «hace cuánto» con un punto; los proyectos plegados se atenúan y el desplegado lleva la flecha en color.
 - **Vista previa más rica:** una fila de resumen («hace 3 h · últimos 6 mensajes»), tus mensajes con `›` en violeta y los de Claude con `●` en naranja.
 - **Barra de ayuda contextual:** muestra solo las teclas que sirven para lo seleccionado (proyecto: desplegar y fijar; conversación: reanudar y renombrar).

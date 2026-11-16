@@ -747,3 +747,16 @@ test('parseTermReplies: lee la respuesta del terminal (¿admite Sixel? ¿tamaño
   hd.parseTermReplies('\x1b[6;4000;9t', st); assert.deepEqual(st.cell, antes, 'una medida absurda también');
   assert.equal(hd.parseTermReplies('\x1b[A\x1b[B hola', st), '\x1b[A\x1b[B hola', 'las teclas normales no se tocan');
 });
+
+test('hl: resalta las coincidencias de la búsqueda sin cambiar el texto', () => {
+  const st = 'ESTILO';
+  const j = (segs) => segs.map(([t]) => t).join('');
+  const a = hd.hl('Corregir error en el checkout', 'err', st);
+  assert.equal(j(a), 'Corregir error en el checkout', 'el texto no cambia');
+  assert.deepEqual(a.map(([t]) => t), ['Corregir ', 'err', 'or en el checkout'], 'se trocea en antes · coincidencia · después');
+  assert.notEqual(a[1][1], st, 'la coincidencia lleva otro estilo'); assert.equal(a[0][1], st, 'el resto conserva el estilo');
+  assert.deepEqual(hd.hl('ERROR error', 'error', st).filter(([, s2]) => s2 !== st).map(([t]) => t), ['ERROR', 'error'], 'sin distinguir mayúsculas y con varias coincidencias');
+  assert.deepEqual(hd.hl('Hola', '', st), [['Hola', st]], 'sin búsqueda no se resalta');
+  assert.deepEqual(hd.hl('Hola', 'xyz', st), [['Hola', st]], 'sin coincidencias, un solo trozo');
+  assert.equal(j(hd.hl('İstanbul', 'stan', st)), 'İstanbul', 'letras que cambian de largo al pasar a minúsculas no rompen el texto');
+});

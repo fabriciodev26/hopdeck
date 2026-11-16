@@ -8,6 +8,12 @@ const { tmp, makeFixture, makePNG, launchHub } = require('../test/helpers');
 const { termToSvg } = require('./term2svg');
 
 const OUT = path.join(__dirname, '..', 'docs', 'screenshots');
+// cada captura se genera en oscuro (la de siempre) y en claro (sufijo -light), para el README con <picture>
+const THEMES = [
+  { suffix: '', theme: 'dark', svg: {} },
+  { suffix: '-light', theme: 'light', svg: { bg: '#ffffff', fg: '#26262c', barBg: '#e9e9ee', titleFg: '#6b6b73' } },
+];
+let TH = THEMES[0];
 const COLS = 124, ROWS = 26;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -53,19 +59,20 @@ async function shot(name, title, opts, drive) {
   fs.writeFileSync(path.join(root, 'cfg.json'), JSON.stringify({ sidebar: 54 })); // lista más ancha para que se lean los títulos
   if (opts.setup) opts.setup(root);
   const h = launchHub({ root, fx, home: opts.home || root, cwd: fx.cwds['tienda-online'], cols: COLS, rows: ROWS,
-    env: { HOPDECK_LANG: 'es', FAKE_BANNER: 'chat de ejemplo', COLORTERM: 'truecolor', ...(opts.env || {}) } });
+    env: { HOPDECK_LANG: 'es', HOPDECK_THEME: TH.theme, FAKE_BANNER: 'chat de ejemplo', COLORTERM: 'truecolor', ...(opts.env || {}) } });
   if (!h) throw new Error('Hace falta node-pty y @xterm/headless (npm install).');
   try {
     await h.waitFor(/tienda-online/, 'lista');
     await drive(h, root);
     await sleep(500);
     fs.mkdirSync(OUT, { recursive: true });
-    fs.writeFileSync(path.join(OUT, name + '.svg'), termToSvg(h.term, { title }));
-    console.log('✓', name);
+    fs.writeFileSync(path.join(OUT, name + TH.suffix + '.svg'), termToSvg(h.term, { title, ...TH.svg }));
+    console.log('✓', name + TH.suffix);
   } finally { await h.close(); }
 }
 
 (async () => {
+ for (TH of THEMES) {
   await shot('01-lista-y-vista-previa', 'Hopdeck · lista y vista previa', {}, async (h) => {
     await h.waitFor(/Corregir error en el checkout/, 'sesiones');
     const y = h.find('Corregir error en el checkout').y;
@@ -102,4 +109,5 @@ async function shot(name, title, opts, drive) {
     h.write('\x10'); await h.waitFor(/⌕/, 'salto rápido'); h.write('cupones'); await h.waitFor(/cupones/i, 'resultado');
     await sleep(300);
   });
+ }
 })().catch((e) => { console.error(e); process.exit(1); });

@@ -16,7 +16,7 @@ const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, 
 const LINES = { '│': 'ud', '─': 'lr', '╭': 'dr', '╮': 'dl', '╰': 'ur', '╯': 'ul', '├': 'udr', '┤': 'udl', '┬': 'lrd', '┴': 'lru', '┼': 'udlr' };
 
 function termToSvg(term, opts = {}) {
-  const { cellW = 9, cellH = 19, font = 15, pad = 16, bar = 36, title = '', bg = '#1c1c1e', fg = '#e8e6e3' } = opts;
+  const { cellW = 9, cellH = 19, font = 15, pad = 16, bar = 36, title = '', bg = '#1c1c1e', fg = '#e8e6e3', barBg = '#2a2a2d', titleFg = '#8a8a8f' } = opts;
   const cols = term.cols, rows = term.rows, buf = term.buffer.active, cell = buf.getNullCell();
   const W = cols * cellW + pad * 2, H = rows * cellH + pad + bar;
   const colorOf = (c, isFg) => {
@@ -62,9 +62,9 @@ function termToSvg(term, opts = {}) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}">
 <title>${esc(title)}</title>
 <rect width="${W}" height="${H}" rx="10" fill="${bg}"/>
-<rect width="${W}" height="${bar}" rx="10" fill="#2a2a2d"/><rect y="${bar - 10}" width="${W}" height="10" fill="#2a2a2d"/>
+<rect width="${W}" height="${bar}" rx="10" fill="${barBg}"/><rect y="${bar - 10}" width="${W}" height="10" fill="${barBg}"/>
 ${dots}
-<text x="${W / 2}" y="${bar / 2 + 5}" fill="#8a8a8f" font-size="13" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">${esc(title)}</text>
+<text x="${W / 2}" y="${bar / 2 + 5}" fill="${titleFg}" font-size="13" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">${esc(title)}</text>
 <g font-family="'Cascadia Mono', 'SFMono-Regular', Consolas, 'DejaVu Sans Mono', 'Liberation Mono', Menlo, monospace" font-size="${font}">
 ${rects.join('\n')}
 ${shapes.join('\n')}

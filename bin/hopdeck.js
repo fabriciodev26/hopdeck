@@ -345,6 +345,34 @@ function chatMark(id) {
   return ['● ', C.ok];
 }
 
+/** Trocea `text` en segmentos [[texto, estilo]] resaltando las coincidencias (sin distinguir mayúsculas) con la búsqueda `q` (en minúsculas). */
+function hl(text, q, style) {
+  const t = String(text);
+  if (!q) return [[t, style]];
+  const low = t.toLowerCase();
+  if (low.length !== t.length) return [[t, style]]; // algunas letras cambian de largo al pasar a minúsculas: no se resalta
+  const out = []; let i = 0;
+  for (let at = low.indexOf(q); at >= 0; at = low.indexOf(q, i)) {
+    if (at > i) out.push([t.slice(i, at), style]);
+    out.push([t.slice(at, at + q.length), C.brand + C.bold]);
+    i = at + q.length;
+  }
+  if (i < t.length) out.push([t.slice(i), style]);
+  return out.length ? out : [[t, style]];
+}
+
+/** Resumen de los chats abiertos para la cabecera de la lista: trabajando ⠋, terminados sin ver ✔, abiertos ●. */
+function liveSummary() {
+  if (!EMBED) return [];
+  let w = 0, u = 0, o = 0;
+  for (const x of E.sessions.values()) { if (x.working) w++; else if (x.unseen) u++; else o++; }
+  const segs = [];
+  if (w) segs.push(['  ' + spin() + ' ' + w, C.accent]);
+  if (u) segs.push(['  ✔ ' + u, C.warn]);
+  if (o) segs.push(['  ● ' + o, C.ok]);
+  return segs;
+}
+
 const tailFit = (t, n) => (strW(t) > n && n > 3 ? '…' + t.slice(t.length - (n - 1)) : t);
 
 function frameTree(W, H) {
@@ -354,8 +382,9 @@ function frameTree(W, H) {
   const bodyH = H - 5;
   S.coff = scroll(S.coff, S.c, bodyH);
   const lines = [];
-  lines.push(fit([[' » ', C.brand], ['Hop', C.brand + C.bold], ['deck', C.text + C.bold], ['  ' + S.projects.length, C.dim], [S.loading ? '  ' + spin() : '', C.accent]], W));
+  lines.push(fit([[' » ', C.brand], ['Hop', C.brand + C.bold], ['deck', C.text + C.bold], ['  ' + S.projects.length, C.dim], [S.loading ? '  ' + spin() : '', C.accent], ...liveSummary()], W));
   lines.push(C.faint + '─'.repeat(W) + R);
+  const sq0 = S.query.trim().toLowerCase(); // búsqueda activa: se resaltan las coincidencias
   const qsList = S.qs ? qsItems() : null;
   const fbList = S.fb && !S.qs ? fbRows() : null;
   if (fbList) { S.fb.i = clamp(S.fb.i, 0, Math.max(0, fbList.length - 1)); S.fb.off = scroll(S.fb.off, S.fb.i, bodyH); lines[0] = fit([[' » ' + T.fbTitle, C.accent + C.bold]], W); }
@@ -399,7 +428,7 @@ function frameTree(W, H) {
       // 4) los proyectos plegados se atenúan: el desplegado, el de esta carpeta y el seleccionado destacan
       const nameC = sel ? C.text + C.bold : e.p.hidden ? C.dim : e.p.isCwd ? C.ok : e.open ? C.text : C.dim;
       lines.push(fit([mark, [e.open ? ' ▾ ' : ' ▸ ', e.open ? C.accent : C.dim],
-        [(e.p.pinned ? '★ ' : '') + (e.p.isCwd ? '● ' : '') + e.p.name, nameC]], W - 13, base) +
+        [(e.p.pinned ? '★ ' : '') + (e.p.isCwd ? '● ' : ''), nameC], ...hl(e.p.name, sq0, nameC)], W - 13, base) +
         fit(right, 13, base));
     } else if (e.t === 'm') {
       lines.push(fit([mark, ['      ', ''], [T.more(e.n), sel ? C.text : C.dim]], W, base));
@@ -412,7 +441,8 @@ function frameTree(W, H) {
     } else {
       const [mk, mc] = chatMark(e.s.id);
       const arch = CFG.archived.includes(e.s.id), tag = e.s.dup ? '#' + e.s.id.slice(0, 4) : '';
-      lines.push(fit([mark, ['    ', ''], [mk, mc], [e.s.title, sel ? C.text + C.bold : arch ? C.dim : C.text]], W - 13, base) +
+      const ts = sel ? C.text + C.bold : arch ? C.dim : C.text, inTxt = sq0 && !e.s.title.toLowerCase().includes(sq0);
+      lines.push(fit([mark, ['    ', ''], [mk, mc], ...hl(e.s.title, sq0, ts), ...(inTxt ? [[' ⌕', C.dim]] : [])], W - 13, base) +
         fit([[tag.padEnd(6), C.accent], [ago(e.s.mtime).padStart(6), C.dim], [' ', '']], 13, base));
     }
   }
@@ -2071,7 +2101,7 @@ if (require.main === module) main();
 else {
   // al hacer require() (pruebas automáticas) no se ejecuta nada: solo se exponen las piezas puras
   module.exports = {
-    cw, strW, fit, clean, imageExt, exportImages, safeId, findClaude, install, backupProfile, ago, tidy, fuzzy, wrapText, parseKeys, KEYMAP, isType, T, S, CFG, E,
+    cw, strW, fit, clean, hl, imageExt, exportImages, safeId, findClaude, install, backupProfile, ago, tidy, fuzzy, wrapText, parseKeys, KEYMAP, isType, T, S, CFG, E,
     readSession, buildProject, scan, scanAsync, finishScan, sortProjects, projectDirs,
     view, flatList, stripBlock, offerShortcut, uninstallAll, commandName, suggestCommand, parseTermReplies, sixelOn, SNIP, MARK_A, MARK_B, toggleProject, cacheLoad, selNorm,
     decodePNG, decodeImage, scaleBox, fitSize, halfBlocks, collectImages, extractImages,
