@@ -354,7 +354,7 @@ test('panel de git: F8 lo abre con la rama, los cambios y los cambios de rama; F
     await h.waitFor(/1 cambio sin guardar/, 'cambios sin guardar');
     const s = h.screen();
     assert.match(s, /⎇ rama-de-prueba/, 'rama actual'); assert.match(s, /cambiado\.txt/, 'archivo cambiado');
-    assert.match(s, /main → rama-de-prueba/, 'el cambio de rama aparece en la actividad'); assert.match(s, /\+ rama-de-prueba desde/, 'y la rama creada');
+    assert.match(s, /main → rama-de-prueba/, 'el cambio de rama aparece en la actividad'); assert.match(s, /\+ rama-de-prueba/, 'y la rama creada'); assert.doesNotMatch(s, /desde HEAD/, 'sin el «desde HEAD», que no aporta nada');
     assert.match(s, /hola desde el chat/, 'el chat sigue a la izquierda del panel');
     h.write('\x1b[19~');                               // F8 otra vez
     await h.waitGone(/Ramas recientes/, 'el panel se cierra');
