@@ -12,7 +12,7 @@ const cp = require('child_process');
 const readline = require('readline');
 
 const { LANG, T } = require('../lib/i18n');
-const { TRUE, NOCOL, LIGHT, fg, bg, R, C, cw, strW, fit, clean } = require('../lib/style');
+const { TRUE, NOCOL, LIGHT, setTheme, isLight, fg, bg, R, C, cw, strW, fit, clean } = require('../lib/style');
 const { baseName, tidy, home, shortPath, fuzzy, wrapText } = require('../lib/text');
 const hist = require('../lib/history');
 const { CONFIG_DIR, CACHE_FILE, textOf, isType, cacheLoad, cacheSave, readSession, decodeDir, projectDirs, buildProject, beginScan, endScan } = hist;
@@ -768,6 +768,7 @@ function onKeyTree(raw) {
       const key = e && e.t === 's' && S.live.has(e.s.id) ? (chatKeyOf(e.s.id) || e.s.id) : e && e.t === 'l' ? e.key : EMBED ? E.shown : null;
       return key ? closeChat(key) : flash(T.notOpen);
     }
+    case 't': case 'f9': return toggleTheme(); // tema claro/oscuro en caliente
     case 'b': return toggleGit(); // panel de git (F8 en macOS pide Fn: por defecto son las teclas multimedia)
     case 'i': case 'f7':
       if (e && e.t === 's') {
@@ -1726,6 +1727,13 @@ function back(key) {
 }
 
 let flashT;
+/** Cambia entre el tema claro y el oscuro sin reiniciar, y lo recuerda para la próxima vez. */
+function toggleTheme() {
+  const next = isLight() ? 'dark' : 'light';
+  setTheme(next); CFG.theme = next; saveCfg();
+  invalidate(); // todas las filas se repintan con los colores nuevos
+  flash(T.themeNow(next));
+}
 function flash(msg) { S.flash = msg; render(); clearTimeout(flashT); flashT = setTimeout(() => { S.flash = ''; render(); }, 2500); }
 
 
@@ -1834,6 +1842,7 @@ async function run() {
       if (s === '\x1b[17~' && E.focus === 'right') return closeChat(E.shown);
       if (s === '\x1b[18~') return openGalleryShown();
       if (s === '\x1b[19~') return toggleGit();
+      if (s === '\x1b[20~') return toggleTheme();
       if (s === '\x1b[15~') { E.focus = 'left'; if (E.hideSide) E.hideSide = false; S.qs = { q: '', pc: 0, i: 0, off: 0 }; return embedResize(); }
       if (s === '\x1bOS' || s === '\x1b[14~') {
         E.hideSide = !E.hideSide && E.sessions.has(E.shown);
@@ -2175,6 +2184,6 @@ else {
     readSession, buildProject, scan, scanAsync, finishScan, sortProjects, projectDirs,
     view, flatList, stripBlock, offerShortcut, uninstallAll, commandName, suggestCommand, parseTermReplies, sixelOn, SNIP, MARK_A, MARK_B, toggleProject, cacheLoad, selNorm,
     decodePNG, decodeImage, scaleBox, fitSize, halfBlocks, collectImages, extractImages,
-    editBuf, normalizeKeys, stripJsonc, wtCtrlV, fbNames, fbOpen, fbRows, sidebarMouse, gitBranch, imageMarkerAt, shownSession, linkChats, findImageByNumber: images.findImageByNumber,
+    editBuf, normalizeKeys, stripJsonc, wtCtrlV, fbNames, fbOpen, fbRows, sidebarMouse, toggleTheme, gitBranch, imageMarkerAt, shownSession, linkChats, findImageByNumber: images.findImageByNumber,
   };
 }

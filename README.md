@@ -99,6 +99,7 @@ Puedes decir que no y usar siempre `hopdeck`. Si cambias de idea: `hopdeck short
 | `F3` | Apagar/encender el ratón (para seleccionar texto con el terminal) |
 | `F4` | Ocultar/mostrar la lista para dar todo el ancho al chat |
 | `F8` · `b` | Mostrar/ocultar el panel de git (tercer panel). `b` funciona con el foco en la lista; en macOS `F8` suele necesitar `Fn` |
+| `t` · `F9` | Cambiar entre tema claro y oscuro al instante (se recuerda). También: `hopdeck theme light\|dark\|auto` |
 | `r` · `?` · `q` | Recargar · ayuda · salir |
 
 En todas las cajas de texto puedes mover el cursor con `←` `→`, ir al principio/final con `Inicio`/`Fin`, borrar con `Supr` y vaciar hasta el inicio con `Ctrl+U`.

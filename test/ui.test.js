@@ -365,6 +365,39 @@ test('panel de git: F8 lo abre con la rama, los cambios y los cambios de rama; F
   } finally { await h.close(); }
 });
 
+// ───────────── tema claro/oscuro en caliente (t / F9) ─────────────
+test('tema: t y F9 cambian entre claro y oscuro sin reiniciar, repintan todo y lo recuerdan', opts, async () => {
+  const root = tmp('hopdeck-ui-theme-');
+  const fx = makeFixture(root, [alpha()]);
+  const h = launchHub({ root, fx, cwd: fx.cwds.alpha, env: { FAKE_PRINT: 'hola desde el chat' } });
+  const color = (needle) => { // color de primer plano (RGB) del texto `needle` en pantalla
+    const pos = h.find(needle); assert.ok(pos, 'hay texto: ' + needle);
+    const b = h.term.buffer.active, cell = b.getLine(b.viewportY + pos.y - 1).getCell(pos.x - 1);
+    return cell.isFgRGB() ? cell.getFgColor().toString(16).padStart(6, '0') : 'paleta-' + cell.getFgColor();
+  };
+  const saved = () => { try { return JSON.parse(fs.readFileSync(path.join(root, 'cfg.json'), 'utf8')).theme; } catch { return undefined; } };
+  try {
+    await h.waitFor(/Sesión dos/, 'lista');
+    assert.equal(color('Sesión dos'), 'e8e6e3', 'empieza en oscuro (texto claro)');
+    h.write('t');                                        // desde la lista
+    await h.waitFor(/Tema claro/, 'aviso del cambio');
+    await h.sleep(200);
+    assert.equal(color('Sesión dos'), '26262c', 'el texto de la lista pasa a los colores del tema claro');
+    assert.equal(saved(), 'light', 'queda guardado');
+    h.write('\x1b[20~');                                // F9, funciona igual
+    await h.waitFor(/Tema oscuro/, 'aviso al volver');
+    await h.sleep(200);
+    assert.equal(color('Sesión dos'), 'e8e6e3', 'vuelve al oscuro');
+    assert.equal(saved(), 'dark');
+    // con un chat abierto también se repinta todo (la lista, el cuadro de abajo y el chat siguen visibles)
+    const uno = h.find('Sesión uno'); h.mouse(0, 5, uno.y); h.mouse(0, 5, uno.y, 'm');
+    await h.waitFor(/hola desde el chat/, 'chat');
+    h.write('\x1b[20~');                                // F9 con el foco en el chat
+    await h.waitFor(/Tema claro/, 'aviso con el chat abierto');
+    assert.match(h.screen(), /hola desde el chat/, 'el chat sigue ahí');
+  } finally { await h.close(); }
+});
+
 // ───────────── búsqueda dentro del contenido (Tab) ─────────────
 test('búsqueda en el contenido: / y Tab encuentran una conversación por lo que se dijo en ella, no por su título', opts, async () => {
   const root = tmp('hopdeck-ui-deep-');

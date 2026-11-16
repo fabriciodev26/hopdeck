@@ -1,9 +1,14 @@
 # Cambios
 
+## 1.3.1
+
+### Nuevo
+- **Cambiar de tema en caliente: `t` o `F9`.** Alterna entre el tema claro y el oscuro sin reiniciar: se repinta todo al instante (lista, chat, panel de git, cuadros) y se recuerda para la próxima vez. Cambia los colores de Hopdeck, no el fondo de tu terminal: úsalo cuando cambies el tema de tu terminal.
+- **`hopdeck theme light|dark|auto`:** lo mismo desde la línea de comandos (`hopdeck theme` solo muestra el actual). La variable `HOPDECK_THEME` sigue mandando sobre lo guardado.
+
 ## 1.3.0
 
 ### Nuevo
-- **`hopdeck theme light|dark|auto`:** cambia el tema de colores desde la línea de comandos y lo recuerda (`hopdeck theme` solo muestra el actual). La variable `HOPDECK_THEME` sigue mandando sobre lo guardado.
 - **Panel de git (F8 o `b`):** un tercer panel de solo lectura a la derecha del chat con la rama actual (y lo que lleva por delante o por detrás del remoto), los cambios sin guardar, las ramas recientes y la **actividad de ramas** (cambios de rama, ramas creadas y merges, desde el reflog de git; los de los últimos 10 minutos se destacan). Se refresca solo, no modifica el repositorio y solo aparece si caben unas 140 columnas. Solo en el terminal integrado. En macOS no se llama a `git` si solo existe el atajo que abre el instalador de Apple.
 
 ### Mejorado
