@@ -6,6 +6,7 @@
 - **Panel de git (F8 o `b`):** un tercer panel de solo lectura a la derecha del chat con la rama actual (y lo que lleva por delante o por detrás del remoto), los cambios sin guardar, las ramas recientes y la **actividad de ramas** (cambios de rama, ramas creadas y merges, desde el reflog de git; los de los últimos 10 minutos se destacan). Se refresca solo, no modifica el repositorio y solo aparece si caben unas 140 columnas. Solo en el terminal integrado. En macOS no se llama a `git` si solo existe el atajo que abre el instalador de Apple.
 
 ### Mejorado
+- **La búsqueda dentro del contenido (`/` y Tab) es unas 10 veces más rápida:** con 2,2 GB de historial pasó de unos 35 s a unos 3,5 s en el peor caso. Se hace en hilos de trabajo en paralelo, sin decodificar el texto, y las conversaciones aparecen en la lista según se encuentran. Además ya no se saltan los archivos de más de 40 MB (ahora el límite es 256 MB), que suelen ser las conversaciones más largas.
 - **La codificación de imágenes Sixel es unas 10 veces más rápida** (el recorte de colores recalculaba todas las cajas en cada paso).
 - **La búsqueda resalta las coincidencias** en los nombres de proyecto y en los títulos; si una conversación aparece porque la coincidencia está dentro de su texto, lleva un `⌕`.
 - **Resumen de chats abiertos en la cabecera de la lista:** `⠋` trabajando, `✔` terminados sin ver, `●` abiertos. La ayuda (`?`) explica los símbolos.

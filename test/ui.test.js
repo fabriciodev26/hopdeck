@@ -364,3 +364,24 @@ test('panel de git: F8 lo abre con la rama, los cambios y los cambios de rama; F
     await h.waitFor(/Ramas recientes/, 'la tecla b abre el panel');
   } finally { await h.close(); }
 });
+
+// ───────────── búsqueda dentro del contenido (Tab) ─────────────
+test('búsqueda en el contenido: / y Tab encuentran una conversación por lo que se dijo en ella, no por su título', opts, async () => {
+  const root = tmp('hopdeck-ui-deep-');
+  const fx = makeFixture(root, [{ name: 'alpha', sessions: [
+    { id: 'e1', first: 'primer mensaje', ai: 'Sesión uno', assistant: 'Usé la zanahoria-mágica para resolverlo', ageH: 1 },
+    { id: 'e2', first: 'otro mensaje', ai: 'Sesión dos', assistant: 'Nada especial aquí', ageH: 2 },
+  ] }]);
+  const h = launchHub({ root, fx, cwd: fx.cwds.alpha });
+  try {
+    await h.waitFor(/Sesión dos/, 'lista');
+    h.write('/'); await h.sleep(150);
+    h.write('zanahoria');
+    await h.sleep(500);
+    assert.doesNotMatch(h.lines().slice(2, 12).join('\n'), /Sesión uno/, 'sin Tab no se encuentra por el contenido');
+    h.write('\t');                                    // Tab: buscar también dentro del texto
+    await h.waitFor(/Sesión uno/, 'la conversación que menciona la palabra aparece', 15000);
+    assert.doesNotMatch(h.lines().slice(2, 12).join('\n'), /Sesión dos/, 'y la que no la menciona, no');
+    assert.match(h.lines().slice(2, 12).join('\n'), /⌕/, 'marcada con ⌕: coincide dentro del texto, no en el título');
+  } finally { await h.close(); }
+});

@@ -812,3 +812,41 @@ test('git: readGit con un repositorio real (ramas, cambios y actividad) y con un
   const noexiste = await gitlib.readGit(path.join(repo, 'no-existe'));
   assert.equal(noexiste.ok, false);
 });
+
+// ───────────── búsqueda dentro del contenido (lib/deepsearch.js) ─────────────
+const deep = require('../lib/deepsearch');
+const mkfile = (name, content) => { const d = tmp('hopdeck-deep-'); const f = path.join(d, name); fs.writeFileSync(f, content); return f; };
+
+test('deepsearch: busca sin distinguir mayúsculas, con acentos y a caballo entre dos bloques de lectura', () => {
+  const a = mkfile('a.jsonl', '{"x":"Hola MUNDO"}\n');
+  assert.equal(deep.fileHasSync(a, 'mundo'), true, 'mayúsculas del archivo, minúsculas de la búsqueda');
+  assert.equal(deep.fileHasSync(a, 'HOLA m'), true, 'y al revés');
+  assert.equal(deep.fileHasSync(a, 'zzz'), false);
+  const n = mkfile('n.jsonl', '{"x":"La CATEGORÍA nueva"}\n');
+  assert.equal(deep.fileHasSync(n, 'categoría'), true, 'letras con acento, con otra capitalización');
+  assert.equal(deep.fileHasSync(n, 'categoria'), false, 'sin acento no es lo mismo');
+  // la coincidencia empieza justo antes del límite de 1 MB del bloque y termina después
+  const pad = 'x'.repeat(1024 * 1024 - 5);
+  const b = mkfile('b.jsonl', pad + 'AguJa-Clave' + 'y'.repeat(1000));
+  assert.equal(deep.fileHasSync(b, 'aguja-clave'), true, 'coincidencia entre dos bloques');
+  assert.equal(deep.fileHasSync(b, 'aguja-claveX'), false);
+  const c = mkfile('c.jsonl', 'x'.repeat(1024 * 1024 - 2) + 'ñandú' + 'z');
+  assert.equal(deep.fileHasSync(c, 'ñandú'), true, 'un carácter de varios bytes cortado entre bloques no se pierde');
+  assert.equal(deep.fileHasSync(path.join(tmp('hopdeck-deep-'), 'no-existe.jsonl'), 'a'), false, 'archivo inexistente');
+  assert.equal(deep.fileHasSync(a, ''), false, 'búsqueda vacía');
+  assert.equal(deep.fileHasSync(mkfile('r.jsonl', 'a.b*c'), 'a.b*c'), true, 'los símbolos de las expresiones regulares son texto normal');
+  assert.equal(deep.fileHasSync(mkfile('r2.jsonl', 'aXb'), 'a.b'), false, 'el punto no es un comodín');
+});
+
+test('deepsearch: varios archivos en paralelo, aciertos en directo y cancelación', async () => {
+  const files = [];
+  for (let i = 0; i < 12; i++) files.push(mkfile(`s${i}.jsonl`, `{"t":"conversación ${i}"}\n` + (i % 4 === 0 ? '{"t":"Palabra-Secreta"}\n' : '') + 'x'.repeat(i * 1000)));
+  const hits = [];
+  const job = deep.deepSearch(files, 'palabra-secreta', (f) => hits.push(f));
+  await job.done;
+  assert.deepEqual(hits.map((f) => path.basename(f)).sort(), ['s0.jsonl', 's4.jsonl', 's8.jsonl'], 'solo los archivos que la contienen');
+  const none = [], j2 = deep.deepSearch(files, 'no-aparece-nunca', (f) => none.push(f)); await j2.done; assert.equal(none.length, 0);
+  await deep.deepSearch([], 'x', () => assert.fail('sin archivos no hay aciertos')).done;
+  const late = [], j3 = deep.deepSearch(files, 'palabra-secreta', (f) => late.push(f)); j3.cancel(); await j3.done;
+  assert.ok(late.length <= 3, 'tras cancelar no llegan más aciertos');
+});

@@ -19,6 +19,7 @@ const { CONFIG_DIR, CACHE_FILE, textOf, isType, cacheLoad, cacheSave, readSessio
 const images = require('../lib/images');
 const { encodeSixel } = require('../lib/sixel');
 const gitlib = require('../lib/git');
+const deepsearch = require('../lib/deepsearch');
 const { collectImages, decodePNG, decodeImage, scaleBox, fitSize, halfBlocks } = images;
 const { parseKeys, KEYMAP, printable, editBuf, normalizeKeys } = require('../lib/keys');
 const { stripJsonc, wtCtrlV, wtSettingsFile } = require('../lib/windows-terminal');
@@ -168,40 +169,24 @@ function view() {
   return out;
 }
 
-// búsqueda dentro del texto de las conversaciones (Tab en el modo búsqueda)
-let deepT = null, deepTok = 0, deepPrev = null;
-async function fileHas(file, q) {
-  let fh; try { fh = await fs.promises.open(file, 'r'); } catch { return false; }
-  try {
-    const st = await fh.stat(); if (st.size > 40 * 1024 * 1024) return false;
-    const buf = Buffer.alloc(256 * 1024); let pos = 0, carry = '';
-    while (pos < st.size) {
-      const { bytesRead } = await fh.read(buf, 0, buf.length, pos); if (!bytesRead) break;
-      const text = carry + buf.toString('utf8', 0, bytesRead).toLowerCase();
-      if (text.includes(q)) return true;
-      carry = text.slice(-q.length); pos += bytesRead;
-    }
-    return false;
-  } finally { await fh.close(); }
-}
+// búsqueda dentro del texto de las conversaciones (Tab en el modo búsqueda): en hilos de trabajo y con los aciertos en directo
+let deepT = null, deepTok = 0, deepPrev = null, deepJob = null;
 function queryChanged() {
   clearTimeout(deepT); deepTok++; S.deepHits = null;
+  if (deepJob) { deepJob.cancel(); deepJob = null; }
   if (!S.deep || !S.query.trim()) deepPrev = null;
   if (!S.deep || S.query.trim().length < 3) { if (!reloading) S.loading = false; return; }
   const tok = deepTok; S.loading = true; ensureSpin();
-  deepT = setTimeout(async () => {
+  deepT = setTimeout(() => {
     const q = S.query.trim().toLowerCase(), hits = new Set();
     const all = S.projects.flatMap((p) => p.sessions);
     // si la búsqueda anterior era un prefijo de esta, solo hay que mirar sus aciertos
-    const list = deepPrev && q.startsWith(deepPrev.q) ? all.filter((x) => deepPrev.hits.has(x.id)) : all;
-    let idx = 0;
-    await Promise.all(Array.from({ length: 6 }, async () => {
-      while (idx < list.length) {
-        if (tok !== deepTok) return;
-        const x = list[idx++]; if (x.file && await fileHas(x.file, q)) hits.add(x.id);
-      }
-    }));
-    if (tok === deepTok) { S.deepHits = hits; deepPrev = { q, hits }; S.loading = false; if (active) render(); }
+    const list = (deepPrev && q.startsWith(deepPrev.q) ? all.filter((x) => deepPrev.hits.has(x.id)) : all).filter((x) => x.file);
+    const idOf = new Map(list.map((x) => [x.file, x.id]));
+    S.deepHits = hits; // se va llenando: los aciertos aparecen en la lista según se encuentran
+    const job = deepsearch.deepSearch(list.map((x) => x.file), q, (file) => { if (tok !== deepTok) return; hits.add(idOf.get(file)); if (active) scheduleRender(); });
+    deepJob = job;
+    job.done.then(() => { if (tok === deepTok) { deepPrev = { q, hits }; S.loading = false; deepJob = null; if (active) render(); } });
   }, 250);
 }
 
