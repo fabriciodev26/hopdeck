@@ -15,6 +15,19 @@ const THEMES = [
 ];
 let TH = THEMES[0];
 const COLS = 124, ROWS = 26;
+const cp = require('child_process');
+/** Repositorio de ejemplo para el panel de git: una rama de trabajo creada y cambiada, un archivo modificado y otro nuevo. */
+function demoRepo(dir) {
+  const nul = process.platform === 'win32' ? 'NUL' : '/dev/null';
+  const env = { ...process.env, GIT_CONFIG_GLOBAL: nul, GIT_CONFIG_SYSTEM: nul };
+  const g = (...a) => cp.execFileSync('git', ['-c', 'user.name=Demo', '-c', 'user.email=demo@example.com', '-c', 'init.defaultBranch=main', ...a], { cwd: dir, env, stdio: 'ignore' });
+  g('init', '-q');
+  fs.mkdirSync(path.join(dir, 'src'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'src', 'carrito.js'), 'module.exports = {};\n'); fs.writeFileSync(path.join(dir, 'README.md'), '# tienda\n');
+  g('add', '.'); g('commit', '-q', '-m', 'Base de la tienda');
+  g('checkout', '-q', '-b', 'fix/checkout-vacio'); g('checkout', '-q', 'main'); g('checkout', '-q', '-b', 'feat/cupones');
+  fs.writeFileSync(path.join(dir, 'src', 'carrito.js'), 'module.exports = { cupones: true };\n'); fs.writeFileSync(path.join(dir, 'src', 'cupon.js'), '// nuevo\n');
+}
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // imagen de ejemplo para el hover: atardecer con montañas
@@ -58,7 +71,8 @@ async function shot(name, title, opts, drive) {
   const fx = makeFixture(root, opts.spec || DEMO.map((p) => ({ ...p, sessions: p.sessions.map((s) => ({ ...s, ...(opts.image && s.id === 'a1' ? { first: '[Image #1] ' + s.first, image: paisaje } : {}) })) })));
   fs.writeFileSync(path.join(root, 'cfg.json'), JSON.stringify({ sidebar: 54 })); // lista más ancha para que se lean los títulos
   if (opts.setup) opts.setup(root);
-  const h = launchHub({ root, fx, home: opts.home || root, cwd: fx.cwds['tienda-online'], cols: COLS, rows: ROWS,
+  if (opts.repo) opts.repo(fx.cwds['tienda-online']);
+  const h = launchHub({ root, fx, home: opts.home || root, cwd: fx.cwds['tienda-online'], cols: opts.cols || COLS, rows: ROWS,
     env: { HOPDECK_LANG: 'es', HOPDECK_THEME: TH.theme, FAKE_BANNER: 'chat de ejemplo', COLORTERM: 'truecolor', ...(opts.env || {}) } });
   if (!h) throw new Error('Hace falta node-pty y @xterm/headless (npm install).');
   try {
@@ -104,6 +118,16 @@ async function shot(name, title, opts, drive) {
     const m = h.find('[Image #1]');
     h.mouse(35, m.x + 3, m.y);
     await h.waitFor(/▀/, 'imagen');
+  });
+  await shot('06-panel-git', 'F8: panel de git con la rama, los cambios y los cambios de rama', { cols: 156, repo: demoRepo, env: { FAKE_PRINT: CONVERSACION } }, async (h) => {
+    await h.waitFor(/Carrito de compras/, 'sesiones');
+    const y = h.find('Carrito de compras').y;
+    h.mouse(0, 6, y); h.mouse(0, 6, y, 'm');
+    await h.waitFor(/Esto es lo que hice/, 'chat abierto');
+    h.write('\x1b[19~');                              // F8: panel de git
+    await h.waitFor(/Actividad de ramas/, 'panel de git');
+    await h.waitFor(/cupon\.js/, 'cambios');
+    h.write('\x1bOP'); await sleep(1800);
   });
   await shot('05-salto-rapido', 'Ctrl+P: salto rápido entre todas las conversaciones', {}, async (h) => {
     h.write('\x10'); await h.waitFor(/⌕/, 'salto rápido'); h.write('cupones'); await h.waitFor(/cupones/i, 'resultado');

@@ -96,6 +96,7 @@ Puedes decir que no y usar siempre `hopdeck`. Si cambias de idea: `hopdeck short
 | `[` `]` | Estrechar / ensanchar la lista |
 | `F3` | Apagar/encender el ratón (para seleccionar texto con el terminal) |
 | `F4` | Ocultar/mostrar la lista para dar todo el ancho al chat |
+| `F8` | Mostrar/ocultar el panel de git (tercer panel) |
 | `r` · `?` · `q` | Recargar · ayuda · salir |
 
 En todas las cajas de texto puedes mover el cursor con `←` `→`, ir al principio/final con `Inicio`/`Fin`, borrar con `Supr` y vaciar hasta el inicio con `Ctrl+U`.
@@ -148,6 +149,22 @@ Empieza siempre en `~`. Las carpetas que usaste hace poco aparecen arriba (`↻ 
 - Si en un chat ves `[Image #3]` (una imagen que ya enviaste), **pasa el cursor por encima** y aparece una vista rápida, sin tapar el resto del chat. En un terminal solo se puede dibujar una versión pequeña (dos píxeles por carácter), así que una captura con texto no se lee: **haz clic sobre la marca** y se abre en grande, a su tamaño real, en el visor de imágenes de tu sistema.
 - `i` / `F7` abre una **galería** con todas las imágenes de la conversación (`← →` navegan, `o` la abre en el visor del sistema, `Esc` cierra).
 - Una imagen recién pegada y aún sin enviar **no** se puede mostrar: todavía no está en el historial.
+
+### Panel de git
+
+`F8` abre un **tercer panel** a la derecha del chat, de solo lectura, con el estado git de la carpeta del chat (o del proyecto seleccionado):
+
+- la **rama actual**, con lo que lleva por delante o por detrás del remoto;
+- los **cambios sin guardar** (archivos modificados, nuevos o borrados);
+- las **ramas recientes**;
+- la **actividad de ramas**: cambios de rama, ramas creadas y merges, tomados del registro (`reflog`) de git. Los de los últimos 10 minutos llevan un punto naranja. Sirve para enterarte de cuándo se creó o cambió de rama, desde Claude o desde donde sea (git no dice quién lo hizo).
+
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/06-panel-git-light.svg">
+  <img alt="Panel de git con la rama, los cambios y la actividad de ramas" src="docs/screenshots/06-panel-git.svg">
+</picture>
+
+Se refresca solo cada pocos segundos y no modifica nada en el repositorio. Necesita `git` y una terminal de unas 140 columnas o más (si no cabe, te lo avisa). Solo está en el terminal integrado, no en el modo tmux.
 
 ### Estado de los chats
 

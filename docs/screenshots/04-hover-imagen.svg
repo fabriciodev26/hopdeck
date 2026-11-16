@@ -2716,7 +2716,7 @@
 <text x="43 52 61" y="50" fill="#d97757" font-weight="bold" xml:space="preserve">Hop</text>
 <text x="70 79 88 97" y="50" fill="#e8e6e3" font-weight="bold" xml:space="preserve">deck</text>
 <text x="124" y="50" fill="#808086" xml:space="preserve">5</text>
-<text x="151" y="50" fill="#818cf8" xml:space="preserve">⠏</text>
+<text x="151" y="50" fill="#818cf8" xml:space="preserve">⠴</text>
 <text x="169" y="50" fill="#818cf8" xml:space="preserve">1</text>
 <text x="520 529 538 547 556 565 574 583 592 601 610 619 628" y="50" fill="#818cf8" font-weight="bold" xml:space="preserve">tienda-online</text>
 <text x="646" y="50" fill="#e8e6e3" xml:space="preserve">›</text>
@@ -2739,7 +2739,7 @@
 <text x="88 97 106 115 124" y="107" fill="#818cf8" xml:space="preserve">Nueva</text>
 <text x="142 151 160 169 178 187 196 205 214 223 232 241" y="107" fill="#818cf8" xml:space="preserve">conversación</text>
 <text x="511" y="107" fill="#e8e6e3" xml:space="preserve">&gt;</text>
-<text x="61" y="126" fill="#818cf8" xml:space="preserve">⠏</text>
+<text x="61" y="126" fill="#818cf8" xml:space="preserve">⠴</text>
 <text x="79 88 97 106 115 124 133" y="126" fill="#e8e6e3" font-weight="bold" xml:space="preserve">Carrito</text>
 <text x="151 160" y="126" fill="#e8e6e3" font-weight="bold" xml:space="preserve">de</text>
 <text x="178 187 196 205 214 223 232" y="126" fill="#e8e6e3" font-weight="bold" xml:space="preserve">compras</text>
@@ -2828,7 +2828,9 @@
 <text x="412 421" y="525" fill="#818cf8" xml:space="preserve">F4</text>
 <text x="439 448 457 466 475 484 493" y="525" fill="#808086" xml:space="preserve">ocultar</text>
 <text x="511 520 529 538 547" y="525" fill="#808086" xml:space="preserve">lista</text>
-<text x="583" y="525" fill="#7ec48f" xml:space="preserve">●</text>
-<text x="601" y="525" fill="#7ec48f" xml:space="preserve">1</text>
+<text x="583 592" y="525" fill="#818cf8" xml:space="preserve">F8</text>
+<text x="610 619 628" y="525" fill="#808086" xml:space="preserve">git</text>
+<text x="664" y="525" fill="#7ec48f" xml:space="preserve">●</text>
+<text x="682" y="525" fill="#7ec48f" xml:space="preserve">1</text>
 </g>
 </svg>

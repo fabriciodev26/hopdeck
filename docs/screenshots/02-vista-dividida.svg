@@ -611,7 +611,9 @@
 <text x="412 421" y="525" fill="#818cf8" xml:space="preserve">F4</text>
 <text x="439 448 457 466 475 484 493" y="525" fill="#808086" xml:space="preserve">ocultar</text>
 <text x="511 520 529 538 547" y="525" fill="#808086" xml:space="preserve">lista</text>
-<text x="583" y="525" fill="#7ec48f" xml:space="preserve">●</text>
-<text x="601" y="525" fill="#7ec48f" xml:space="preserve">1</text>
+<text x="583 592" y="525" fill="#818cf8" xml:space="preserve">F8</text>
+<text x="610 619 628" y="525" fill="#808086" xml:space="preserve">git</text>
+<text x="664" y="525" fill="#7ec48f" xml:space="preserve">●</text>
+<text x="682" y="525" fill="#7ec48f" xml:space="preserve">1</text>
 </g>
 </svg>

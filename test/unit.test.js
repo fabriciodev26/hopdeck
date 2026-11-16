@@ -726,11 +726,11 @@ test('encodeSixel: un degradado con miles de colores se reduce a 256 y queda par
 });
 
 test('encodeSixel: una imagen de tamaño real se codifica en poco tiempo y con un tamaño razonable', () => {
-  const w = 1000, h = 440, rgb = new Uint8Array(w * h * 3);
+  const w = 576, h = 288, rgb = new Uint8Array(w * h * 3); // el mayor cuadro del hover (36×9 celdas) con celdas de 16×32 píxeles
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) rgb.set([(x * 7 + y * 3) & 255, (x * 3) & 255, (y * 5) & 255], (y * w + x) * 3);
   const t = Date.now(), s = sixel.encodeSixel(rgb, w, h);
-  assert.ok(Date.now() - t < 4000, `tardó ${Date.now() - t} ms`);
-  assert.ok(s.length < 6e6, `${(s.length / 1e6).toFixed(1)} MB`);
+  assert.ok(Date.now() - t < 2000, `tardó ${Date.now() - t} ms`);
+  assert.ok(s.length < 3e6, `${(s.length / 1e6).toFixed(1)} MB`);
   assert.equal(decodeSixel(s).h, h);
 });
 
@@ -759,4 +759,56 @@ test('hl: resalta las coincidencias de la búsqueda sin cambiar el texto', () =>
   assert.deepEqual(hd.hl('Hola', '', st), [['Hola', st]], 'sin búsqueda no se resalta');
   assert.deepEqual(hd.hl('Hola', 'xyz', st), [['Hola', st]], 'sin coincidencias, un solo trozo');
   assert.equal(j(hd.hl('İstanbul', 'stan', st)), 'İstanbul', 'letras que cambian de largo al pasar a minúsculas no rompen el texto');
+});
+
+// ───────────── panel de git (lib/git.js) ─────────────
+const gitlib = require('../lib/git');
+const cpSync = require('child_process');
+const gitOk = (() => { try { return cpSync.spawnSync('git', ['--version'], { stdio: 'ignore' }).status === 0; } catch { return false; } })();
+
+test('git: parseStatus lee rama, remoto, adelanto/retraso y archivos', () => {
+  const s = gitlib.parseStatus('## feat/x...origin/feat/x [ahead 2, behind 1]\n M src/a.js\nA  b.txt\n?? nuevo.md\n D viejo.js\n');
+  assert.equal(s.branch, 'feat/x'); assert.equal(s.upstream, 'origin/feat/x'); assert.equal(s.ahead, 2); assert.equal(s.behind, 1);
+  assert.deepEqual(s.files.map((f) => [f.x, f.y, f.path]), [[' ', 'M', 'src/a.js'], ['A', ' ', 'b.txt'], ['?', '?', 'nuevo.md'], [' ', 'D', 'viejo.js']]);
+  assert.equal(gitlib.parseStatus('## main\n').branch, 'main'); assert.equal(gitlib.parseStatus('## main\n').files.length, 0);
+  assert.equal(gitlib.parseStatus('## No commits yet on main\n').branch, 'main');
+  const d = gitlib.parseStatus('## HEAD (no branch)\n'); assert.equal(d.detached, true);
+  assert.equal(gitlib.parseStatus('## main...origin/main\n').upstream, 'origin/main');
+});
+
+test('git: parseActivity reconoce cambios de rama, ramas creadas y merges, la más reciente primero', () => {
+  const out = [
+    'feat-x@{1000}\tcommit: dos', 'feat-x@{1000}\tbranch: Created from HEAD', 'main@{900}\tcommit (initial): uno',
+    'other@{1500}\tbranch: Created from main', 'HEAD@{2000}\tcheckout: moving from feat-x to main', 'HEAD@{1000}\tcheckout: moving from main to feat-x',
+    'HEAD@{2500}\tmerge feat-x: Fast-forward', 'HEAD@{1000}\tcommit: dos',
+  ].join('\n');
+  const a = gitlib.parseActivity(out);
+  assert.deepEqual(a.map((e) => e.k), ['merge', 'switch', 'create', 'create', 'switch'], 'solo actividad de ramas, ordenada por fecha (a igual segundo, el orden de git)');
+  assert.deepEqual(a[1], { k: 'switch', from: 'feat-x', to: 'main', t: 2000 });
+  assert.deepEqual(a[2], { k: 'create', name: 'other', from: 'main', t: 1500 });
+  assert.equal(a[0].what, 'feat-x');
+  assert.deepEqual(gitlib.parseActivity('basura\n\nHEAD@{x}\ty'), [], 'líneas raras se ignoran');
+});
+
+test('git: parseBranches', () => {
+  assert.deepEqual(gitlib.parseBranches('*\tmain\t200\n \tfeat\t100\n'), [{ cur: true, name: 'main', t: 200 }, { cur: false, name: 'feat', t: 100 }]);
+});
+
+test('git: readGit con un repositorio real (ramas, cambios y actividad) y con una carpeta sin git', { skip: !gitOk && 'git no instalado' }, async () => {
+  const repo = tmp('hopdeck-git-');
+  const env = { ...process.env, GIT_CONFIG_GLOBAL: process.platform === 'win32' ? 'NUL' : '/dev/null', GIT_CONFIG_SYSTEM: process.platform === 'win32' ? 'NUL' : '/dev/null' };
+  const g = (...a) => cpSync.execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'init.defaultBranch=main', ...a], { cwd: repo, env, stdio: 'ignore' });
+  g('init', '-q'); g('commit', '-q', '--allow-empty', '-m', 'uno'); g('checkout', '-q', '-b', 'feat-x'); g('checkout', '-q', 'main'); g('checkout', '-q', 'feat-x');
+  fs.writeFileSync(path.join(repo, 'nuevo.txt'), 'x');
+  const d = await gitlib.readGit(repo);
+  assert.equal(d.ok, true); assert.equal(d.status.branch, 'feat-x');
+  assert.deepEqual(d.status.files.map((f) => f.path), ['nuevo.txt'], 'archivo sin seguimiento');
+  assert.ok(d.branches.some((b) => b.name === 'main') && d.branches.some((b) => b.name === 'feat-x' && b.cur), 'ramas, con la actual marcada');
+  const kinds = d.activity.map((e) => e.k + ':' + (e.to || e.name || ''));
+  assert.ok(kinds.includes('create:feat-x'), 'rama creada: ' + kinds);
+  assert.ok(kinds.includes('switch:main') && kinds.includes('switch:feat-x'), 'cambios de rama: ' + kinds);
+  const sin = await gitlib.readGit(tmp('hopdeck-nogit-'));
+  assert.equal(sin.ok, false); assert.equal(sin.repo, false, 'una carpeta sin git no es un error de lectura');
+  const noexiste = await gitlib.readGit(path.join(repo, 'no-existe'));
+  assert.equal(noexiste.ok, false);
 });

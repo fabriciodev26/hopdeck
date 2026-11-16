@@ -1,8 +1,12 @@
 # Cambios
 
-## 1.2.7
+## 1.3.0
+
+### Nuevo
+- **Panel de git (F8):** un tercer panel de solo lectura a la derecha del chat con la rama actual (y lo que lleva por delante o por detrás del remoto), los cambios sin guardar, las ramas recientes y la **actividad de ramas** (cambios de rama, ramas creadas y merges, desde el reflog de git; los de los últimos 10 minutos se destacan). Se refresca solo, no modifica el repositorio y solo aparece si caben unas 140 columnas. Solo en el terminal integrado.
 
 ### Mejorado
+- **La codificación de imágenes Sixel es unas 10 veces más rápida** (el recorte de colores recalculaba todas las cajas en cada paso).
 - **La búsqueda resalta las coincidencias** en los nombres de proyecto y en los títulos; si una conversación aparece porque la coincidencia está dentro de su texto, lleva un `⌕`.
 - **Resumen de chats abiertos en la cabecera de la lista:** `⠋` trabajando, `✔` terminados sin ver, `●` abiertos. La ayuda (`?`) explica los símbolos.
 - **Capturas del README en claro y oscuro:** se muestra la que corresponde al tema de quien lee.

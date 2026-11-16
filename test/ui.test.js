@@ -103,7 +103,7 @@ test('hover: pasar el cursor por la lista previsualiza la conversación y por [I
     const m1 = h.find('[Image #1]'); assert.ok(m1);
     h.mouse(35, m1.x + 3, m1.y);
     await h.waitFor(/╭─ \[Image #1\] ─*╮/, 'hover sobre [Image #1] abre un cuadro con la imagen');
-    assert.match(h.screen(), /clic: abrir en grande/, 'el cuadro avisa de que un clic la abre en grande');
+    await h.waitFor(/clic: abrir en grande/, 'el cuadro avisa de que un clic la abre en grande');
     await h.waitFor(/▀/, 'la imagen se dibuja con medios bloques (primero el cuadro muestra un marcador mientras se decodifica)');
     assert.match(h.screen(), /FAKE CLAUDE/, 'el cuadro es flotante: el chat sigue visible alrededor');
     assert.match(h.screen(), /aquí va \[Image #1\]/, 'la línea de la marca no se tapa');
@@ -330,4 +330,34 @@ test('Sixel: se activa si el terminal contesta que lo admite, y HOPDECK_SIXEL=0 
       else { assert.equal(leerSixel(log).length, 1, 'tras la respuesta del terminal se usa la imagen real'); assert.doesNotMatch(h.screen(), /▀/); }
     } finally { await h.close(); }
   }
+});
+
+// ───────────── panel de git (F8) ─────────────
+const cpUi = require('child_process');
+const gitUi = (() => { try { return cpUi.spawnSync('git', ['--version'], { stdio: 'ignore' }).status === 0; } catch { return false; } })();
+test('panel de git: F8 lo abre con la rama, los cambios y los cambios de rama; F8 lo cierra', { ...opts, skip: opts.skip || (!gitUi && 'git no instalado') }, async () => {
+  const root = tmp('hopdeck-ui-git-');
+  const fx = makeFixture(root, [alpha()]);
+  const repo = fx.cwds.alpha, nul = process.platform === 'win32' ? 'NUL' : '/dev/null';
+  const genv = { ...process.env, GIT_CONFIG_GLOBAL: nul, GIT_CONFIG_SYSTEM: nul };
+  const g = (...a) => cpUi.execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'init.defaultBranch=main', ...a], { cwd: repo, env: genv, stdio: 'ignore' });
+  g('init', '-q'); g('commit', '-q', '--allow-empty', '-m', 'uno'); g('checkout', '-q', '-b', 'rama-de-prueba');
+  fs.writeFileSync(path.join(repo, 'cambiado.txt'), 'x');
+  const h = launchHub({ root, fx, cwd: repo, cols: 160, rows: 30, env: { FAKE_PRINT: 'hola desde el chat' } });
+  try {
+    await h.waitFor(/Sesión dos/, 'lista');
+    const uno = h.find('Sesión uno'); h.mouse(0, 5, uno.y); h.mouse(0, 5, uno.y, 'm');
+    await h.waitFor(/hola desde el chat/, 'chat', 20000);
+    assert.doesNotMatch(h.screen(), /Ramas recientes/, 'sin pulsar nada no hay tercer panel');
+    h.write('\x1b[19~');                               // F8
+    await h.waitFor(/Ramas recientes/, 'el panel de git', 20000);
+    await h.waitFor(/1 cambio sin guardar/, 'cambios sin guardar');
+    const s = h.screen();
+    assert.match(s, /⎇ rama-de-prueba/, 'rama actual'); assert.match(s, /cambiado\.txt/, 'archivo cambiado');
+    assert.match(s, /main → rama-de-prueba/, 'el cambio de rama aparece en la actividad'); assert.match(s, /\+ rama-de-prueba desde/, 'y la rama creada');
+    assert.match(s, /hola desde el chat/, 'el chat sigue a la izquierda del panel');
+    h.write('\x1b[19~');                               // F8 otra vez
+    await h.waitGone(/Ramas recientes/, 'el panel se cierra');
+    assert.match(h.screen(), /hola desde el chat/);
+  } finally { await h.close(); }
 });

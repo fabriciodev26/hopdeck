@@ -96,6 +96,7 @@ You can say no and always use `hopdeck`. If you change your mind: `hopdeck short
 | `[` `]` | Narrow / widen the list |
 | `F3` | Turn the mouse off/on (to select text with the terminal) |
 | `F4` | Hide/show the list to give the chat the full width |
+| `F8` | Show/hide the git panel (third panel) |
 | `r` · `?` · `q` | Reload · help · quit |
 
 Every text box supports a cursor: `←` `→`, `Home`/`End`, `Delete`, and `Ctrl+U` to clear up to the start.
@@ -148,6 +149,22 @@ It always starts at `~`. Recently used folders appear on top (`↻ recent`).
 - If a chat shows `[Image #3]` (an image you already sent), **hover it** and a quick preview appears without covering the rest of the chat. A terminal can only draw a small version (two pixels per character), so a screenshot with text is not legible: **click the marker** and it opens full size, at its real resolution, in your system's image viewer.
 - `i` / `F7` opens a **gallery** with all the conversation's images (`← →` navigate, `o` opens it in the system viewer, `Esc` closes).
 - An image you just pasted and have not sent yet **cannot** be shown: it is not in the history yet.
+
+### Git panel
+
+`F8` opens a read-only **third panel** to the right of the chat with the git state of the chat's folder (or the selected project):
+
+- the **current branch**, with how far ahead or behind the remote it is;
+- the **uncommitted changes** (modified, new or deleted files);
+- the **recent branches**;
+- the **branch activity**: branch switches, created branches and merges, taken from git's `reflog`. Anything from the last 10 minutes has an orange dot. It tells you when a branch was created or switched, whether by Claude or by anyone else (git does not record who did it).
+
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/06-panel-git-light.svg">
+  <img alt="Git panel with the branch, the changes and the branch activity" src="docs/screenshots/06-panel-git.svg">
+</picture>
+
+It refreshes itself every few seconds and never modifies the repository. It needs `git` and a terminal of about 140 columns or more (if it does not fit, you get a notice). It is only in the built-in terminal, not in tmux mode.
 
 ### Chat status
 

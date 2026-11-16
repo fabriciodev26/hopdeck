@@ -18,6 +18,7 @@ const hist = require('../lib/history');
 const { CONFIG_DIR, CACHE_FILE, textOf, isType, cacheLoad, cacheSave, readSession, decodeDir, projectDirs, buildProject, beginScan, endScan } = hist;
 const images = require('../lib/images');
 const { encodeSixel } = require('../lib/sixel');
+const gitlib = require('../lib/git');
 const { collectImages, decodePNG, decodeImage, scaleBox, fitSize, halfBlocks } = images;
 const { parseKeys, KEYMAP, printable, editBuf, normalizeKeys } = require('../lib/keys');
 const { stripJsonc, wtCtrlV, wtSettingsFile } = require('../lib/windows-terminal');
@@ -127,7 +128,7 @@ function ago(ms) {
 const S = { qpos: 0, pc: 0, fb: null, confirmMk: null, confirmClose: null, more: new Set(), qs: null, promptKind: 'folder', renameTarget: null, deep: false, deepHits: null, showHidden: false, prompt: null, help: false, loading: false, projects: [], pi: 0, si: 0, focus: 0, query: '', searching: false, poff: 0, soff: 0, flash: '', c: 0, coff: 0, open: null, live: new Set(), liveKey: '' };
 const SIDEBAR = process.argv.includes('--sidebar');
 let EMBED = false; // vista dividida con terminal embebido (Windows / sin tmux)
-const E = { sessions: new Map(), shown: null, focus: 'left', pend: null, deps: null, mouse: CFG.mouse !== false, hideSide: false, note: null, sel: null, gallery: null, hover: null, sixelDetected: false, cell: { w: 10, h: 20 }, sixelKey: null, sixelAt: 0, sixelStale: false, sixelRetry: null };
+const E = { sessions: new Map(), shown: null, focus: 'left', pend: null, deps: null, mouse: CFG.mouse !== false, hideSide: false, git: !!CFG.git, note: null, sel: null, gallery: null, hover: null, sixelDetected: false, cell: { w: 10, h: 20 }, sixelKey: null, sixelAt: 0, sixelStale: false, sixelRetry: null };
 const SPIN = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 let spinT = null, frameN = 0, reloading = false;
 const needsSpin = () => S.loading || (E.gallery && (E.gallery.loading || E.gallery.pending)) || (E.hover && E.hover.g.pending) || [...E.sessions.values()].some((x) => x.working || (!x.ready && x === E.sessions.get(E.shown)));
@@ -867,7 +868,79 @@ function loadDeps() {
 function embedLayout() {
   const W = process.stdout.columns || 100, H = process.stdout.rows || 30;
   const SW = E.hideSide ? 0 : CFG.sidebar ? clamp(CFG.sidebar, 24, 80) : clamp(Math.floor(W * 0.3), 36, 46);
-  return { W, H, SW, rw: Math.max(10, W - SW - (SW ? 1 : 0)), rh: Math.max(3, H - 1), th: Math.max(3, H - 3) };
+  const room = Math.max(10, W - SW - (SW ? 1 : 0));
+  const GW = E.git && room - GIT_W - 1 >= GIT_MIN_CHAT ? GIT_W : 0; // tercer panel (git): solo si el chat conserva un ancho cómodo
+  return { W, H, SW, GW, rw: GW ? room - GW - 1 : room, rh: Math.max(3, H - 1), th: Math.max(3, H - 3) };
+}
+
+// ───────────────────────── panel de git (tercer panel, F8) ─────────────────────────
+const GIT_W = 38, GIT_MIN_CHAT = 60;
+const GITC = new Map(); // carpeta → { t, loading, data }
+/** Estado de git de la carpeta, de la caché; si tiene más de 4 s se vuelve a leer en segundo plano. */
+function gitInfo(cwd) {
+  const hit = GITC.get(cwd), now = Date.now();
+  if (hit && (hit.loading || now - hit.t < 4000)) return hit.data;
+  GITC.set(cwd, { t: hit ? hit.t : 0, loading: true, data: hit ? hit.data : null });
+  gitlib.readGit(cwd).then((data) => { GITC.set(cwd, { t: Date.now(), loading: false, data }); if (active && E.git) scheduleRender(); });
+  return hit ? hit.data : null;
+}
+const gitCwd = () => {
+  const sh = E.sessions.get(E.shown);
+  if (sh && sh.cwd) return sh.cwd;
+  const e = !S.help && !S.qs ? flatList()[S.c] : null;
+  return e && e.p ? e.p.cwd : null;
+};
+function toggleGit() {
+  if (!EMBED) return flash(T.gitOnlyEmbed);
+  if (!E.git) {
+    const SW = E.hideSide ? 0 : CFG.sidebar ? clamp(CFG.sidebar, 24, 80) : clamp(Math.floor((process.stdout.columns || 100) * 0.3), 36, 46);
+    const need = SW + (SW ? 1 : 0) + GIT_MIN_CHAT + GIT_W + 1;
+    if ((process.stdout.columns || 100) < need) return flash(T.gitNarrow(need));
+  }
+  E.git = !E.git; CFG.git = E.git; saveCfg();
+  embedResize();
+}
+/** Las `rh` filas del panel de git: título, línea y contenido (rama, cambios, ramas recientes, actividad de ramas). */
+function gitRows(GW, rh) {
+  const cwd = gitCwd(), d = cwd ? gitInfo(cwd) : null;
+  const out = [fit([[' ⎇ Git', C.accent + C.bold], [cwd ? '  ' + baseName(cwd) : '', C.dim]], GW), C.faint + '─'.repeat(GW) + R];
+  const body = [], line = (...segs) => body.push(segs);
+  const row = (left, right, rc) => body.push({ left, right, rc });
+  if (!cwd) line([' ' + T.gitNone, C.dim]);
+  else if (!d) line([' ' + spin() + ' …', C.accent]);
+  else if (!d.ok) { line([' ' + (d.missing ? T.gitMissing : d.repo ? T.gitErr : T.gitNoRepo), C.dim]); if (d.err && d.repo && !d.missing) line([' ' + d.err, C.faint]); }
+  else {
+    const s = d.status, n = s.files.length, now = Date.now();
+    line([' ', ''], [(s.detached ? '⌀ ' : '⎇ ') + s.branch, C.brand + C.bold], [s.ahead ? '  ↑' + s.ahead : '', C.ok], [s.behind ? '  ↓' + s.behind : '', C.warn]);
+    line(n ? [' ● ', C.warn] : [' ✔ ', C.ok], [n ? T.gitDirty(n) : T.gitClean, n ? C.warn : C.dim]);
+    const room = Math.max(0, Math.min(6, rh - 2 - 14));
+    for (const f of s.files.slice(0, room)) {
+      const code = f.x === '?' ? '?' : f.x !== ' ' ? f.x : f.y;
+      line(['   ', ''], [code + ' ', code === 'D' ? C.brand : code === 'M' ? C.warn : C.ok], [f.path, C.text]);
+    }
+    if (n > room && room > 0) line(['   ', ''], [T.gitMore(n - room), C.dim]);
+    body.push(null);
+    line([' ' + T.gitBranches, C.dim + C.bold]);
+    for (const b of d.branches.slice(0, 5)) row([[b.cur ? '  ● ' : '    ', b.cur ? C.ok : ''], [b.name, b.cur ? C.text + C.bold : C.text]], b.t ? ago(b.t * 1000) : '');
+    body.push(null);
+    line([' ' + T.gitActivity, C.dim + C.bold]);
+    if (!d.activity.length) line(['   ' + T.gitNoActivity, C.dim]);
+    for (const a of d.activity) {
+      const fresh = now - a.t * 1000 < 10 * 60 * 1000, mark = [fresh ? '  ● ' : '    ', fresh ? C.brand : ''];
+      const txt = a.k === 'switch' ? [[a.from, C.dim], [' → ', C.accent], [a.to, C.text]]
+        : a.k === 'create' ? [['+ ', C.ok], [a.name, C.text], ...(a.from !== 'HEAD' && strW(a.name) + strW(a.from) + strW(T.gitFrom) + 19 <= GW ? [[' ' + T.gitFrom + ' ' + a.from, C.dim]] : [])]
+        : a.k === 'merge' ? [['⇄ merge ', C.accent], [a.what, C.text]] : [['↻ rebase', C.accent]];
+      row([mark, ...txt], ago(a.t * 1000));
+    }
+  }
+  for (const b of body) {
+    if (out.length >= rh) break;
+    if (b === null) out.push(' '.repeat(GW));
+    else if (Array.isArray(b)) out.push(fit(b, GW));
+    else { const rw = strW(b.right) + 1; out.push(fit(b.left, GW - rw) + fit([[b.right, b.rc || C.dim], [' ', '']], rw)); }
+  }
+  while (out.length < rh) out.push(' '.repeat(GW));
+  return out;
 }
 
 function sgr(c, fgMode) {
@@ -1236,7 +1309,7 @@ function headerRow(sh, width) {
 }
 
 function renderEmbed() {
-  const { W, H, SW, rw, rh, th } = embedLayout();
+  const { W, H, SW, GW, rw, rh, th } = embedLayout();
   if (W < 70 || H < 12) { process.stdout.write('\x1b[2J\x1b[H' + T.small); invalidate(); return; }
   const left = SW ? frameTree(SW, rh) : null;
   const sh = E.sessions.get(E.shown);
@@ -1253,6 +1326,7 @@ function renderEmbed() {
     ? termRow(sh.term, ty, pop.left, selRange(ty, rw)) + pop.rows[ty - pop.top] + termRow(sh.term, ty, rw - pop.left - pop.bw, selRange(ty, rw), pop.left + pop.bw)
     : null);
   const div = (E.focus === 'right' ? C.accent : C.faint) + '│' + R;
+  const gitR = GW ? gitRows(GW, rh) : null;
   for (let y = 0; y < rh; y++) {
     const ty = y - 2; // las 2 primeras filas del panel derecho son el título y su línea
     const gd = E.gallery && E.gallery.dec.get(E.gallery.i);
@@ -1261,14 +1335,14 @@ function renderEmbed() {
         : y === 1 ? C.faint + '─'.repeat(rw) + R : gRows[ty])
       : y === 0 ? headerRow(hdr, rw) : y === 1 ? C.faint + '─'.repeat(rw) + R
       : sh && sh.ready ? (popRow(ty) || termRow(sh.term, ty, rw, selRange(ty, rw))) : sh ? loaderRow(ty, rw, th, sh.title) : pvRows ? pvRows[ty] : idleRow(ty, rw, th);
-    rowsOut.push((left ? (left[y] || ' '.repeat(SW)) + div : '') + right);
+    rowsOut.push((left ? (left[y] || ' '.repeat(SW)) + div : '') + right + (gitR ? C.faint + '│' + R + gitR[y] : ''));
   }
   const live = E.sessions.size;
   const k = (key, d) => [[key, C.accent], [' ' + d + '   ', C.dim]];
   const sb = sh && sh.ready ? sh.term.buffer.active : null;
   const back = sb ? sb.baseY - sb.viewportY : 0;
   rowsOut.push(fit([[' ', ''], [E.note ? E.note.t + '   ' : '', C.ok], [back > 0 ? T.up(back, sb && sb.baseY ? Math.round((100 * sb.viewportY) / sb.baseY) : -1) + '   ' : '', C.warn],
-    ...k('F1', T.bar1), ...k('F2', T.bar2), ...k('F3', E.mouse ? T.bar4 : T.bar5), ...k('F4', E.hideSide ? T.bar7 : T.bar6),
+    ...k('F1', T.bar1), ...k('F2', T.bar2), ...k('F3', E.mouse ? T.bar4 : T.bar5), ...k('F4', E.hideSide ? T.bar7 : T.bar6), ...k('F8', T.bar8),
     [live ? '● ' + live : '', C.ok]], W));
   const changes = diffRows(rowsOut);
   // imagen real (Sixel) sobre el hueco del cuadro: se dibuja al aparecer y se repite si algo reescribe esas filas (con un mínimo de 150 ms entre dibujos)
@@ -1418,8 +1492,9 @@ function sidebarMouse(b, x, y, type, rows = process.stdout.rows || 30) {
 
 function onMouse(b, x, y, type) {
   if (E.gallery) return;
-  const { SW, rh } = embedLayout();
+  const { SW, GW, rw, rh } = embedLayout();
   const sh = E.sessions.get(E.shown);
+  if (GW && x > (SW ? SW + 1 : 0) + rw) { if (E.hover) { E.hover = null; scheduleRender(); } return; } // el panel de git es de solo lectura
   if (b & 64) { // rueda
     E.hover = null;
     const up = (b & 1) === 0;
@@ -1755,6 +1830,7 @@ async function run() {
   }
   process.stdout.on('resize', EMBED ? embedResize : () => { invalidate(); render(); });
   if (EMBED) setInterval(pollChats, 400);
+  if (EMBED) setInterval(() => { if (active && E.git && embedLayout().GW) scheduleRender(); }, 4000); // el panel de git se refresca solo
   setInterval(() => { // lista siempre al día
     if (S.loading || reloading || S.searching || S.query || S.prompt !== null || S.help) return;
     if (SIDEBAR || EMBED) { const e = flatList()[S.c]; reloadAsync(() => { if (!e) return; const i = flatList().findIndex((x) => x.t === e.t && x.p.key === e.p.key && (e.t !== 's' || x.s.id === e.s.id)); if (i >= 0) S.c = i; }, true); }
@@ -1771,6 +1847,7 @@ async function run() {
       if (E.gallery) { for (const k of parseKeys(s)) galleryKey(k); return; }
       if (s === '\x1b[17~' && E.focus === 'right') return closeChat(E.shown);
       if (s === '\x1b[18~') return openGalleryShown();
+      if (s === '\x1b[19~') return toggleGit();
       if (s === '\x1b[15~') { E.focus = 'left'; if (E.hideSide) E.hideSide = false; S.qs = { q: '', pc: 0, i: 0, off: 0 }; return embedResize(); }
       if (s === '\x1bOS' || s === '\x1b[14~') {
         E.hideSide = !E.hideSide && E.sessions.has(E.shown);
@@ -2101,7 +2178,7 @@ if (require.main === module) main();
 else {
   // al hacer require() (pruebas automáticas) no se ejecuta nada: solo se exponen las piezas puras
   module.exports = {
-    cw, strW, fit, clean, hl, imageExt, exportImages, safeId, findClaude, install, backupProfile, ago, tidy, fuzzy, wrapText, parseKeys, KEYMAP, isType, T, S, CFG, E,
+    cw, strW, fit, clean, hl, gitRows, gitInfo, toggleGit, imageExt, exportImages, safeId, findClaude, install, backupProfile, ago, tidy, fuzzy, wrapText, parseKeys, KEYMAP, isType, T, S, CFG, E,
     readSession, buildProject, scan, scanAsync, finishScan, sortProjects, projectDirs,
     view, flatList, stripBlock, offerShortcut, uninstallAll, commandName, suggestCommand, parseTermReplies, sixelOn, SNIP, MARK_A, MARK_B, toggleProject, cacheLoad, selNorm,
     decodePNG, decodeImage, scaleBox, fitSize, halfBlocks, collectImages, extractImages,
