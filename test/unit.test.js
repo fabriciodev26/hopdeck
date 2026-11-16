@@ -643,6 +643,23 @@ const cli = () => {
   return { d, perfil, cfg, cache, env, run, conBloque: () => fs.readFileSync(perfil, 'utf8').includes(hd.MARK_A) };
 };
 
+test('línea de comandos: "theme light|dark|auto" guarda el tema; sin argumento lo muestra; otra forma da error', () => {
+  const { cfg, run, env } = cli();
+  const quiet = (...a) => require('child_process').spawnSync(process.execPath, [path.join(__dirname, '..', 'bin', 'hopdeck.js'), ...a], { env: { ...env, HOPDECK_THEME: '' }, encoding: 'utf8', timeout: 30000 });
+  let r = quiet('theme'); assert.equal(r.status, 0); assert.match(r.stdout, /Tema guardado: automático/);
+  r = quiet('theme', 'light'); assert.equal(r.status, 0); assert.match(r.stdout, /Tema guardado: claro/); assert.match(r.stdout, /Se está usando: claro/);
+  assert.equal(JSON.parse(fs.readFileSync(cfg, 'utf8')).theme, 'light', 'se guarda en las preferencias');
+  assert.deepEqual(JSON.parse(fs.readFileSync(cfg, 'utf8')).pinned, ['/x'], 'sin tocar el resto');
+  r = quiet('theme', 'dark'); assert.match(r.stdout, /Tema guardado: oscuro/); assert.equal(JSON.parse(fs.readFileSync(cfg, 'utf8')).theme, 'dark');
+  r = quiet('theme', 'auto'); assert.match(r.stdout, /automático/); assert.equal(JSON.parse(fs.readFileSync(cfg, 'utf8')).theme, undefined, 'auto quita la elección');
+  for (const mal of [['theme', 'rojo'], ['theme', 'light', 'dark']]) { r = run(...mal); assert.equal(r.status, 2, mal.join(' ')); assert.match(r.stderr, /Uso: hopdeck theme/); }
+  r = run('tema'); assert.equal(r.status, 2); assert.ok(r.stderr.includes('¿Quisiste decir "theme"?'));
+  // HOPDECK_THEME manda sobre lo guardado (se prueba con lib/style.js, que es quien decide)
+  fs.writeFileSync(cfg, '{"theme":"light"}');
+  const luz = (extra) => require('child_process').spawnSync(process.execPath, ['-e', "console.log(require('./lib/style').LIGHT)"], { cwd: path.join(__dirname, '..'), env: { ...env, HOPDECK_THEME: '', ...extra }, encoding: 'utf8' }).stdout.trim();
+  assert.equal(luz({}), 'true', 'lo guardado se aplica'); assert.equal(luz({ HOPDECK_THEME: 'dark' }), 'false', 'la variable gana');
+});
+
 test('línea de comandos: "shortcut on|off" solo toca el atajo; cualquier otra forma da error con sugerencia y no hace nada', () => {
   const { perfil, cfg, run, conBloque } = cli();
   assert.equal(run('shortcut', 'on').status, 0); assert.ok(conBloque(), 'shortcut on instala el atajo');

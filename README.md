@@ -190,6 +190,7 @@ Se refresca solo cada pocos segundos y no modifica nada en el repositorio. Neces
 |---|---|
 | `hopdeck` | Abre Hopdeck |
 | `hopdeck shortcut on` / `hopdeck shortcut off` | Instala o quita el atajo para que `claude` abra Hopdeck |
+| `hopdeck theme light` / `dark` / `auto` | Cambia el tema de colores y lo guarda (`hopdeck theme` muestra el actual) |
 | `hopdeck uninstall` | **Desinstala Hopdeck por completo**: el atajo, tus preferencias y la caché, y el programa. Pregunta antes (sin terminal, usa `--yes`). No toca tu historial de Claude Code |
 | `hopdeck doctor` | Revisa tu instalación y dice cómo arreglar lo que falte |
 | `hopdeck --list` | Lista los proyectos en texto plano |
@@ -213,7 +214,7 @@ Casi nunca hace falta tocar nada. Lo más útil:
 | Variable de entorno | Efecto |
 |---|---|
 | `HOPDECK_LANG` | `es` o `en` (por defecto, el idioma del sistema) |
-| `HOPDECK_THEME` | `light` para fondos claros |
+| `HOPDECK_THEME` | `light` o `dark`: manda sobre lo guardado con `hopdeck theme` |
 | `HOPDECK_SIXEL` | `1` fuerza la imagen real al pasar el cursor por `[Image #N]`, `0` usa siempre bloques (por defecto se detecta) |
 | `NO_COLOR` | Quita los colores |
 | `CLAUDE_CONFIG_DIR` | Carpeta de Claude Code, si no es `~/.claude` |
@@ -264,7 +265,7 @@ Empieza siempre por `hopdeck doctor`.
 
 **Quiero que `claude` vuelva a ser el de siempre.** `hopdeck shortcut off`, o `HOPDECK_SKIP=1 claude` para saltarlo una vez.
 
-**Se ve mal en mi terminal.** Prueba `HOPDECK_THEME=light` (fondo claro) o `NO_COLOR=1`.
+**Se ve mal en mi terminal.** Prueba `hopdeck theme light` (fondo claro) o `NO_COLOR=1`.
 
 ## Colaborar y licencia
 

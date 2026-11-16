@@ -2109,9 +2109,9 @@ function tutorial(afterInstall) {
 
 // ───────────────────────── entrada ─────────────────────────
 // ── Comandos: UNA sola forma para cada uno (shortcut on|off, uninstall, doctor, help). Lo demás no hace nada: da un error con una sugerencia ──
-const COMMANDS = ['shortcut', 'uninstall', 'doctor', 'help'];
+const COMMANDS = ['shortcut', 'theme', 'uninstall', 'doctor', 'help'];
 // Palabras que alguien escribiría para lo mismo: no son comandos y no se ejecutan, solo sirven para sugerir el correcto
-const SYNONYMS = { install: 'shortcut on', instalar: 'shortcut on', atajo: 'shortcut on', desinstalar: 'uninstall', remove: 'uninstall', delete: 'uninstall', ayuda: 'help', diagnostico: 'doctor', version: '--version', list: '--list' };
+const SYNONYMS = { install: 'shortcut on', instalar: 'shortcut on', atajo: 'shortcut on', desinstalar: 'uninstall', remove: 'uninstall', delete: 'uninstall', ayuda: 'help', diagnostico: 'doctor', version: '--version', list: '--list', tema: 'theme', modo: 'theme', mode: 'theme', dark: 'theme dark', light: 'theme light', oscuro: 'theme dark', claro: 'theme light' };
 /** Nombre de comando si `arg` es exactamente uno (sin guiones ni variantes); null si no. */
 const commandName = (arg) => (COMMANDS.includes(String(arg || '').toLowerCase()) ? String(arg).toLowerCase() : null);
 const editDistance = (a, b) => { const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]); for (let j = 1; j <= b.length; j++) d[0][j] = j; for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return d[a.length][b.length]; };
@@ -2138,6 +2138,13 @@ function main() {
   if (commandName(cmd) === 'shortcut') { // hopdeck shortcut on | off: solo el atajo de claude
     if (rest.length !== 1 || !['on', 'off'].includes(rest[0])) { console.error(`${C.warn}${T.shortcutUsage}${R}`); process.exit(2); }
     install(rest[0] === 'off'); markAsked();
+  }
+  else if (commandName(cmd) === 'theme') { // hopdeck theme [light|dark|auto]: guarda el tema (la variable HOPDECK_THEME manda sobre esto)
+    if (rest.length > 1 || (rest[0] && !['light', 'dark', 'auto'].includes(rest[0]))) { console.error(`${C.warn}${T.themeUsage}${R}`); process.exit(2); }
+    if (rest[0]) { if (rest[0] === 'auto') delete CFG.theme; else CFG.theme = rest[0]; saveCfg(); }
+    const env = !!process.env.HOPDECK_THEME; // lo que se usará la próxima vez que abras Hopdeck
+    const eff = env ? (LIGHT ? 'light' : 'dark') : CFG.theme || (/;(7|15)$/.test(process.env.COLORFGBG || '') ? 'light' : 'dark');
+    console.log(T.themeShow(CFG.theme || 'auto', eff, CFG.theme ? 'config' : 'auto', env));
   }
   else if (commandName(cmd) === 'uninstall') { // desinstalación completa: atajo, preferencias, caché y programa
     if (rest.some((a) => a !== '--yes' && a !== '-y')) { console.error(`${C.warn}${T.unknownCmd(rest.find((a) => a !== '--yes' && a !== '-y'))}${R}\n${C.dim}${T.cmdList}${R}`); process.exit(2); }

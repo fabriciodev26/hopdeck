@@ -190,6 +190,7 @@ It refreshes itself every few seconds and never modifies the repository. It need
 |---|---|
 | `hopdeck` | Opens Hopdeck |
 | `hopdeck shortcut on` / `hopdeck shortcut off` | Installs or removes the shortcut so that `claude` opens Hopdeck |
+| `hopdeck theme light` / `dark` / `auto` | Changes the color theme and remembers it (`hopdeck theme` shows the current one) |
 | `hopdeck uninstall` | **Uninstalls Hopdeck completely**: the shortcut, your preferences and cache, and the program. Asks first (without a terminal, use `--yes`). Does not touch your Claude Code history |
 | `hopdeck doctor` | Checks your setup and tells you how to fix whatever is missing |
 | `hopdeck --list` | Lists the projects as plain text |
@@ -213,7 +214,7 @@ You almost never need to change anything. The most useful options:
 | Environment variable | Effect |
 |---|---|
 | `HOPDECK_LANG` | `es` or `en` (default: system language) |
-| `HOPDECK_THEME` | `light` for light backgrounds |
+| `HOPDECK_THEME` | `light` or `dark`: takes priority over what `hopdeck theme` saved |
 | `HOPDECK_SIXEL` | `1` forces the real image when hovering `[Image #N]`, `0` always uses blocks (auto-detected by default) |
 | `NO_COLOR` | Disable colors |
 | `CLAUDE_CONFIG_DIR` | Claude Code folder, if it is not `~/.claude` |
@@ -264,7 +265,7 @@ Always start with `hopdeck doctor`.
 
 **I want `claude` back to normal.** `hopdeck shortcut off`, or `HOPDECK_SKIP=1 claude` to skip it once.
 
-**It looks wrong in my terminal.** Try `HOPDECK_THEME=light` (light background) or `NO_COLOR=1`.
+**It looks wrong in my terminal.** Try `hopdeck theme light` (light background) or `NO_COLOR=1`.
 
 ## Contributing and license
 
