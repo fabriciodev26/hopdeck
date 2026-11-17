@@ -1,5 +1,10 @@
 # Cambios
 
+## Sin publicar
+
+### Arreglado
+- **Teclas repetidas al pie de la lista.** La fila de la lista repetía `n nueva`, `/ buscar` y `? ayuda`, que ya dice la barra de abajo (`[/] buscar  [n] nueva …`). Ahora esa fila solo dice lo propio de la fila marcada: sobre un proyecto, `⏎ desplegar  p fijar  x ocultar`; sobre una conversación, `⏎ reanudar  R renombrar  a archivar`. También se quitaron los espacios que sobraban tras la última tecla y que hacían que se cortara con «…» aunque cupiera.
+
 ## 1.4.2
 
 ### Nuevo

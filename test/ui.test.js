@@ -454,6 +454,25 @@ test('barra inferior: [tecla] descripción, cambia con el foco y resume proyecto
   } finally { await h.close(); }
 });
 
+// ───────────── teclas al pie: sin repetir ─────────────
+test('teclas al pie: la fila de la lista solo dice lo propio de la fila marcada, sin repetir la barra de abajo', opts, async () => {
+  const root = tmp('hopdeck-ui-sinrepetir-');
+  const fx = makeFixture(root, [alpha()]);
+  const h = launchHub({ root, fx, cwd: fx.cwds.alpha });
+  try {
+    await h.waitFor(/Sesión dos/, 'lista');
+    const pie = () => h.lines()[h.lines().length - 2].slice(0, 36);       // la última fila de la lista, encima de la barra global
+    const barra = () => h.lines()[h.lines().length - 1];
+    await h.waitFor(/\[\/\] buscar/, 'la barra de abajo con las teclas entre corchetes');
+    assert.match(barra(), /\[n\] nueva/); assert.match(barra(), /\[\?\] ayuda/);
+    assert.match(pie(), /⏎ desplegar/, 'sobre un proyecto: qué hace ⏎'); assert.match(pie(), /p fijar/); assert.match(pie(), /x ocultar/);
+    h.write('j'); h.write('j');                                           // baja hasta una conversación
+    await h.waitFor(/⏎ reanudar  R renombrar/, 'sobre una conversación: reanudar (la pantalla de inicio también dice «⏎ reanudar», por eso se espera a la fila de la lista)');
+    assert.match(pie(), /R renombrar/); assert.match(pie(), /a archivar/);
+    for (const repetida of [/\bn nueva/, /\/ buscar/, /\? ayuda/, /\bq salir/]) assert.doesNotMatch(pie(), repetida, 'no repite lo de la barra de abajo: ' + repetida);
+  } finally { await h.close(); }
+});
+
 // ───────────── mascota ─────────────
 test('mascota: sale en la pantalla de inicio, sobre el texto, y se quita si el terminal es pequeño', opts, async () => {
   const root = tmp('hopdeck-ui-mascota-');

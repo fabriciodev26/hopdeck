@@ -480,12 +480,13 @@ function frameTree(W, H) {
     lines.push(fit([[' ⏎', C.accent], [' ' + T.k.open + '  ', C.dim], S.searching ? ['Tab', C.accent] : ['/', C.accent], S.searching ? [' ' + (deepOn ? '◉ ' : '○ ') + T.deep + '  ', deepOn ? C.ok : C.dim] : [' ' + T.kEdit + '  ', C.dim],
       ['esc', C.accent], [' ' + (S.searching ? T.kEsc : T.kClear), C.dim]], W));
   } else {
+    // solo lo que la barra de abajo no dice: qué hace ⏎ en la fila marcada y sus teclas propias (n, /, ?, q… ya están abajo)
     const k = T.k, segs = [[' ', '']];
-    const keys = !cur ? [['⏎', k.open], ['n', k.neu], ['/', k.find], ['?', T.kHelp]]
-      : cur.t === 'p' ? [['⏎', T.kUnfold], ['n', k.neu], ['p', T.kPin], ['/', k.find], ['?', T.kHelp]]
-      : cur.t === 's' ? [['⏎', k.resume], ['R', T.kRename], ['n', k.neu], ['/', k.find], ['?', T.kHelp]]
-      : [['⏎', k.open], ['n', k.neu], ['/', k.find], ['?', T.kHelp]];
-    for (const [key, desc] of keys) segs.push([key, C.accent], [' ' + desc + '  ', C.dim]);
+    const keys = !cur ? [['⏎', k.open]]
+      : cur.t === 'p' ? [['⏎', T.kUnfold], ['p', T.kPin], ['x', T.kHide]]
+      : cur.t === 's' ? [['⏎', k.resume], ['R', T.kRename], ['a', T.kArchive]]
+      : [['⏎', k.open]];
+    keys.forEach(([key, desc], i) => segs.push([key, C.accent], [' ' + desc + (i < keys.length - 1 ? '  ' : ''), C.dim])); // sin espacios tras la última: contarían para el ancho y forzarían el «…»
     lines.push(fit(segs, W));
   }
   return lines;
