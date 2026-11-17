@@ -14,6 +14,7 @@ const readline = require('readline');
 const { LANG, T } = require('../lib/i18n');
 const { TRUE, NOCOL, LIGHT, setTheme, isLight, fg, bg, R, C, cw, strW, fit, clean } = require('../lib/style');
 const mascot = require('../lib/mascot');
+const stats = require('../lib/stats');
 const { baseName, tidy, home, shortPath, fold, queryWords, matchWords, fuzzy, wrapText } = require('../lib/text');
 const hist = require('../lib/history');
 const { CONFIG_DIR, CACHE_FILE, textOf, isType, cacheLoad, cacheSave, readSession, decodeDir, projectDirs, buildProject, beginScan, endScan } = hist;
@@ -1380,9 +1381,62 @@ function previewRows(msgs, width, height, info = '') {
 }
 
 /** Título del panel del chat: proyecto › conversación  ⎇ rama */
-function headerRow(sh, width) {
+// ── Estadísticas de la conversación (mensajes, tokens, herramientas, modelo), en la fila del título del chat ──
+const STATS = new Map(); // archivo → { st, sum, at, busy, m, z }; solo se guardan las últimas conversaciones vistas
+let sidIdx = { src: null, map: new Map() };
+/** Archivo de una conversación por su id (la lista se recorre una vez por escaneo). */
+function fileOfSid(sid) {
+  if (sidIdx.src !== S.projects) sidIdx = { src: S.projects, map: new Map(S.projects.flatMap((p) => p.sessions.map((q) => [q.id, q.file]))) };
+  return sidIdx.map.get(sid) || null;
+}
+const chatFile = (x) => x.file || (x.sid ? fileOfSid(x.sid) : null);
+/**
+ * Resumen de la conversación de ese archivo, o null mientras se lee la primera vez (undefined si no hay archivo). Se calcula en segundo
+ * plano y, si el archivo crece (el chat abierto), se actualiza leyendo solo lo nuevo, como mucho cada 3 s.
+ */
+function chatStats(file) {
+  if (!file) return undefined;
+  let e = STATS.get(file);
+  if (e) { STATS.delete(file); STATS.set(file, e); } // los más recientes al final
+  else { e = { st: stats.newState(), sum: null, at: 0, busy: false, m: -1, z: -1 }; STATS.set(file, e); if (STATS.size > 12) STATS.delete(STATS.keys().next().value); }
+  const now = Date.now();
+  if (!e.busy && now - e.at > (e.sum ? 3000 : 0)) {
+    e.at = now;
+    let s; try { s = fs.statSync(file); } catch { return e.sum; }
+    if (!e.sum || s.size !== e.z || s.mtimeMs !== e.m) {
+      e.busy = true; e.z = s.size; e.m = s.mtimeMs;
+      stats.update(e.st, file).then(() => { e.sum = stats.summary(e.st); }, () => { e.sum = e.sum || stats.summary(e.st); }).finally(() => { e.busy = false; if (active) scheduleRender(); });
+    }
+  }
+  return e.sum;
+}
+
+/** Campos de las estadísticas, de más a menos importante: se muestran los que quepan, siempre en este orden: MSGS │ TOK │ TOOLS │ modelo. */
+function statFields(sum) {
+  if (sum === undefined) return [];
+  if (sum === null) return [{ t: '…', c: C.dim, o: 0 }];
+  return [
+    { t: 'MSGS ' + sum.msgs, c: C.accent, o: 0 },
+    sum.tok ? { t: 'TOK ' + stats.fmtNum(sum.tok), c: C.ok, o: 1 } : null,
+    sum.model ? { t: stats.modelShort(sum.model), c: C.brand + C.bold, o: 3 } : null,
+    sum.tools ? { t: 'TOOLS ' + sum.tools, c: C.warn, o: 2 } : null,
+  ].filter(Boolean);
+}
+
+/** Título del panel del chat: proyecto › conversación  ⎇ rama, y a la derecha MSGS │ TOK │ TOOLS │ modelo (los que quepan). */
+function headerRow(sh, width, sum) {
   if (!sh) return ' '.repeat(width);
-  return fit([[' ' + sh.project, C.accent + C.bold], [' › ' + sh.title, C.text], [sh.branch ? '   ⎇ ' + sh.branch : '', C.dim]], width);
+  const left = [[' ' + sh.project, C.accent + C.bold], [' › ' + sh.title, C.text], [sh.branch ? '   ⎇ ' + sh.branch : '', C.dim]];
+  const leftW = left.reduce((a, [t]) => a + strW(t), 0), budget = width - Math.min(leftW, Math.floor(width * 0.5)) - 1; // el título puede acortarse, pero no desaparecer
+  const chosen = []; let used = 0;
+  for (const f of statFields(sum)) { const w = strW(f.t) + (chosen.length ? 3 : 0); if (used + w > budget) break; chosen.push(f); used += w; } // en orden de importancia
+  if (!chosen.length) return fit(left, width);
+  chosen.sort((a, b) => a.o - b.o);
+  const right = [];
+  chosen.forEach((f, i) => { if (i) right.push([' │ ', C.faint]); right.push([f.t, f.c]); });
+  right.push([' ', '']);
+  const rw = right.reduce((a, [t]) => a + strW(t), 0);
+  return fit(left, width - rw) + fit(right, rw);
 }
 
 function renderEmbed() {
@@ -1395,7 +1449,7 @@ function renderEmbed() {
   const selEnt = !sh && !S.help && !S.qs ? flatList()[S.c] : null;
   const pvMsgs = selEnt && selEnt.t === 's' ? previewFor(selEnt.s) : null;
   const pvRows = pvMsgs && pvMsgs.length ? previewRows(pvMsgs, rw, th, T.prevInfo(ago(selEnt.s.mtime), pvMsgs.length)) : null;
-  const hdr = sh || (selEnt && selEnt.t === 's' ? { project: selEnt.p.name, title: selEnt.s.title, branch: gitBranch(selEnt.p.cwd) } : null);
+  const hdr = sh || (selEnt && selEnt.t === 's' ? { project: selEnt.p.name, title: selEnt.s.title, branch: gitBranch(selEnt.p.cwd), file: selEnt.s.file } : null);
   const gRows = E.gallery ? galleryRows(rw, th) : null;
   const hv = !E.gallery && sh && sh.ready && E.hover && !E.hover.g.loading && E.hover.g.images.length ? E.hover : null;
   const pop = hv ? hoverPopup(hv, rw, th) : null;
@@ -1411,7 +1465,7 @@ function renderEmbed() {
     const right = gRows ? (y === 0 ? fit([[' ' + E.gallery.project, C.accent + C.bold], [' › ' + E.gallery.title, C.text],
         [E.gallery.images.length ? `   ▣ ${E.gallery.i + 1}/${E.gallery.images.length}` + (gd ? ` · ${gd.w}×${gd.h}` : '') : '', C.dim]], rw)
         : y === 1 ? C.faint + '─'.repeat(rw) + R : gRows[ty])
-      : y === 0 ? headerRow(hdr, rw) : y === 1 ? C.faint + '─'.repeat(rw) + R
+      : y === 0 ? headerRow(hdr, rw, hdr ? chatStats(chatFile(hdr)) : undefined) : y === 1 ? C.faint + '─'.repeat(rw) + R
       : sh && sh.ready ? (popRow(ty) || termRow(sh.term, ty, rw, selRange(ty, rw))) : sh ? loaderRow(ty, rw, th, sh.title) : pvRows ? pvRows[ty] : idleRow(ty, rw, th);
     rowsOut.push((left ? (left[y] || ' '.repeat(SW)) + div : '') + right + (gitR ? gdiv + gitR[y] : ''));
   }

@@ -28,11 +28,11 @@ function makeFixture(root, spec) {
       if (s.meta) lines.push({ type: 'user', isMeta: true, message: { role: 'user', content: '<local-command-caveat>x</local-command-caveat>' }, cwd });
       if (s.first) lines.push({ type: 'user', message: { role: 'user', content: s.image ? [{ type: 'image', source: { type: 'base64', media_type: 'image/png', data: s.image } }, { type: 'text', text: s.first }] : s.first }, cwd, sessionId: s.id });
       if (s.toolImage) lines.push({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: [{ type: 'image', source: { type: 'base64', media_type: 'image/png', data: s.toolImage } }] }] }, sessionId: s.id });
-      if (s.assistant) lines.push({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text: s.assistant }] }, sessionId: s.id });
+      if (s.assistant) lines.push({ type: 'assistant', message: { id: 'msg_' + s.id, role: 'assistant', model: s.model, usage: s.usage, content: [{ type: 'text', text: s.assistant }, ...Array.from({ length: s.tools || 0 }, (_, i) => ({ type: 'tool_use', id: 'tu_' + s.id + i, name: 'Bash', input: {} }))] }, sessionId: s.id });
       if (s.ai) lines.push({ type: 'ai-title', aiTitle: s.ai, sessionId: s.id });
       if (s.custom) lines.push({ type: 'custom-title', customTitle: s.custom, sessionId: s.id });
       const f = path.join(dir, s.id + '.jsonl');
-      fs.writeFileSync(f, lines.map((l) => JSON.stringify(l)).join('\n') + (lines.length ? '\n' : ''));
+      fs.writeFileSync(f, lines.map((l) => JSON.stringify(l.type === 'user' || l.type === 'assistant' ? { parentUuid: null, isSidechain: false, ...l } : l)).join('\n') + (lines.length ? '\n' : ''));
       const t = (Date.now() - (s.ageH || 1) * 3600 * 1000) / 1000;
       fs.utimesSync(f, t, t);
     }

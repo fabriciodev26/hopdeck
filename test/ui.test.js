@@ -398,6 +398,62 @@ test('tema: t y F9 cambian entre claro y oscuro sin reiniciar, repintan todo y l
   } finally { await h.close(); }
 });
 
+// ───────────── estadísticas en la fila del título ─────────────
+test('estadísticas: la fila del título muestra MSGS │ TOK │ TOOLS │ modelo, en la vista previa y en el chat, y quita campos si no caben', opts, async () => {
+  const root = tmp('hopdeck-ui-stats-');
+  const fx = makeFixture(root, [{ name: 'alpha', sessions: [
+    { id: 'e1', first: 'primer mensaje', ai: 'Sesión uno', assistant: 'hecho', usage: { input_tokens: 1200, output_tokens: 300, cache_read_input_tokens: 2000000 }, model: 'claude-opus-4-5-20251101', tools: 2, ageH: 1 },
+    { id: 'e2', first: 'otro mensaje', ai: 'Sesión dos', ageH: 2 },
+  ] }]);
+  const arriba = (h) => h.lines()[0].slice(37);
+  const h = launchHub({ root, fx, cwd: fx.cwds.alpha, cols: 130 });
+  try {
+    await h.waitFor(/Sesión dos/, 'lista');
+    const uno = h.find('Sesión uno'); h.mouse(35, 5, uno.y);                             // pasar el cursor: vista previa
+    await h.waitFor(/MSGS 2/, 'estadísticas en la vista previa', 8000);
+    assert.match(arriba(h), /MSGS 2 │ TOK 2M │ TOOLS 2 │ opus/, 'en este orden y separados');
+    assert.match(arriba(h), /alpha › Sesión uno/, 'junto al título de siempre');
+    h.mouse(0, 5, uno.y); h.mouse(0, 5, uno.y, 'm');                                      // abrir el chat
+    await h.waitFor(/FAKE CLAUDE/, 'chat abierto');
+    assert.match(arriba(h), /MSGS 2 │ TOK 2M │ TOOLS 2 │ opus/, 'también con el chat abierto');
+    const dos = h.find('Sesión dos'); h.write('\x1bOP'); await h.sleep(200); h.mouse(0, 5, dos.y); h.mouse(0, 5, dos.y, 'm');
+    await h.waitFor(/Sesión dos/, 'otra conversación');
+    await h.sleep(500);
+    assert.match(arriba(h), /MSGS 1(?!\d)/, 'una conversación sin respuestas de Claude: solo mensajes, sin TOK ni modelo');
+    assert.doesNotMatch(arriba(h), /TOK|TOOLS|opus/);
+  } finally { await h.close(); }
+  const estrecho = launchHub({ root, fx, cwd: fx.cwds.alpha, cols: 80 });
+  try {
+    await estrecho.waitFor(/Sesión dos/, 'lista en un terminal estrecho');
+    const uno = estrecho.find('Sesión uno'); estrecho.mouse(35, 5, uno.y);
+    await estrecho.waitFor(/MSGS 2/, 'estadísticas', 8000);
+    assert.match(estrecho.lines()[0].slice(37), /alpha › Sesión uno/, 'el título sigue');
+    assert.doesNotMatch(estrecho.lines()[0], /TOOLS/, 'los campos menos importantes se quitan primero');
+  } finally { await estrecho.close(); }
+});
+
+// ───────────── barra inferior ─────────────
+test('barra inferior: [tecla] descripción, cambia con el foco y resume proyectos y chats a la derecha', opts, async () => {
+  const root = tmp('hopdeck-ui-barra-');
+  const fx = makeFixture(root, [alpha(), { name: 'beta', sessions: [{ id: 'b1', first: 'hola beta', ai: 'Cosa beta', ageH: 3 }] }]);
+  const h = launchHub({ root, fx, cwd: fx.cwds.alpha, cols: 130 });
+  try {
+    await h.waitFor(/Sesión dos/, 'lista');
+    const barra = () => h.lines().at(-1);
+    await h.waitFor(/\[q\] salir/, 'barra inferior');
+    assert.match(barra(), /\[\/\] buscar\s+\[n\] nueva\s+\[Ctrl\+P\] saltar/, 'con el foco en la lista: sus teclas de letra');
+    assert.match(barra(), /\[q\] salir/);
+    assert.match(barra(), /2 proyectos · 3 chats\s*$/, 'resumen a la derecha');
+    assert.doesNotMatch(barra(), /\[F1\]/);
+    const uno = h.find('Sesión uno'); h.mouse(0, 5, uno.y); h.mouse(0, 5, uno.y, 'm');
+    await h.waitFor(/FAKE CLAUDE/, 'chat abierto');
+    await h.waitFor(/\[F1\] lista/, 'con el foco en el chat: solo las teclas F, porque las letras son de Claude');
+    assert.match(barra(), /\[F3\] copiar texto\s+\[F4\] ocultar lista\s+\[F5\] saltar\s+\[F8\] git\s+\[F9\] tema/);
+    assert.match(barra(), /● 1\s+2 proyectos · 3 chats\s*$/, 'y cuántos chats hay abiertos');
+    assert.doesNotMatch(barra(), /\[q\]/);
+  } finally { await h.close(); }
+});
+
 // ───────────── barra inferior ─────────────
 test('barra inferior: [tecla] descripción, cambia con el foco y resume proyectos y chats a la derecha', opts, async () => {
   const root = tmp('hopdeck-ui-barra-');

@@ -112,6 +112,8 @@ En todas las cajas de texto puedes mover el cursor con `←` `→`, ir al princi
 
 Sin ningún chat abierto, el panel derecho muestra los últimos mensajes de la conversación seleccionada. Con el ratón basta **pasar el cursor** por la lista, sin hacer clic.
 
+En la fila del título, a la derecha, salen las estadísticas de la conversación: `MSGS` (mensajes), `TOK` (tokens: entrada, salida y caché), `TOOLS` (herramientas usadas) y el modelo. Aparecen tanto en la vista previa como con el chat abierto, y si el panel es estrecho se quitan primero los menos importantes. Se calculan en segundo plano la primera vez, y después solo se lee lo que Claude va añadiendo.
+
 ### Elegir una carpeta
 
 <picture>

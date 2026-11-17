@@ -112,6 +112,8 @@ Every text box supports a cursor: `←` `→`, `Home`/`End`, `Delete`, and `Ctrl
 
 With no chat open, the right pane shows the last messages of the selected conversation. With the mouse you only need to **hover** the list, no click needed.
 
+On the title row, at the right, you get the conversation statistics: `MSGS` (messages), `TOK` (tokens: input, output and cache), `TOOLS` (tools used) and the model. They show in the preview and with the chat open, and on a narrow pane the least important ones are dropped first. They are computed in the background the first time, and afterwards only what Claude appends is read.
+
 ### Pick a folder
 
 <picture>

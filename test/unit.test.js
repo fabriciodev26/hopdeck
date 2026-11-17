@@ -758,6 +758,37 @@ test('línea de comandos: "theme light|dark|auto" guarda el tema; sin argumento 
   assert.equal(luz({}), 'true', 'lo guardado se aplica'); assert.equal(luz({ HOPDECK_THEME: 'dark' }), 'false', 'la variable gana');
 });
 
+test('estadísticas: mensajes, tokens, herramientas y modelo de una conversación, y al crecer el archivo solo se lee lo añadido', async () => {
+  const stats = require('../lib/stats'); const d = tmp('hopdeck-stats-'); const f = path.join(d, 's.jsonl');
+  const user = (content, extra = {}) => JSON.stringify({ parentUuid: null, isSidechain: false, type: 'user', ...extra, message: { role: 'user', content } });
+  const asst = (id, content, usage, model = 'claude-opus-4-5-20251101') => JSON.stringify({ parentUuid: null, isSidechain: false, message: { model, id, type: 'message', role: 'assistant', content, usage }, type: 'assistant' });
+  const tool = (id) => ({ type: 'tool_use', id, name: 'Bash', input: {} });
+  const base = [
+    user('hola'), user('aviso interno', { isMeta: true }), user('de un subagente', { isSidechain: true }),
+    asst('m1', [{ type: 'text', text: 'ok' }], { input_tokens: 10, output_tokens: 5, cache_creation_input_tokens: 100, cache_read_input_tokens: 1000 }),
+    asst('m1', [tool('t1')], { input_tokens: 10, output_tokens: 50, cache_creation_input_tokens: 100, cache_read_input_tokens: 1000 }), // el mismo mensaje en otra línea: cuenta una vez
+    asst('m2', [tool('t2'), tool('t3')], { input_tokens: 1, output_tokens: 2 }),
+    JSON.stringify({ type: 'ai-title', aiTitle: 'x' }), JSON.stringify({ parentUuid: null, isSidechain: false, type: 'attachment', attachment: { type: 'x' } }),
+    user([{ type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'A'.repeat(300000) } }, { type: 'text', text: 'mira' }]), // línea enorme: no se lee
+  ];
+  fs.writeFileSync(f, base.join('\n') + '\n');
+  const st = stats.newState(); await stats.update(st, f);
+  let r = stats.summary(st);
+  assert.deepEqual(r, { msgs: 4, tok: 1160 + 3, tools: 3, model: 'claude-opus-4-5-20251101' }, 'usuario (2) + mensajes de Claude (2); tokens: el mayor valor de cada mensaje; el aviso interno y el subagente no cuentan');
+  const antes = st.pos;
+  fs.appendFileSync(f, asst('m3', [tool('t4')], { input_tokens: 7, output_tokens: 3 }, 'claude-sonnet-5-5') + '\n' + user('otra'));  // la última línea aún sin terminar
+  await stats.update(st, f); r = stats.summary(st);
+  assert.deepEqual(r, { msgs: 5, tok: 1163 + 10, tools: 4, model: 'claude-sonnet-5-5' }, 'suma solo lo nuevo; la línea incompleta espera');
+  assert.ok(st.pos > antes);
+  fs.appendFileSync(f, '\n'); await stats.update(st, f);
+  assert.equal(stats.summary(st).msgs, 6, 'al completarse la línea, cuenta');
+  fs.writeFileSync(f, user('solo una') + '\n'); await stats.update(st, f);
+  assert.equal(stats.summary(st).msgs, 1, 'si el archivo se reescribe más corto, se empieza de nuevo');
+
+  assert.deepEqual([999, 1000, 1234, 45200, 206900000, 3.2e9].map(stats.fmtNum), ['999', '1K', '1.2K', '45.2K', '206.9M', '3.2B']);
+  assert.deepEqual(['claude-opus-4-5-20251101', 'claude-sonnet-5-5', 'claude-haiku-4', 'otro-modelo'].map(stats.modelShort), ['opus', 'sonnet', 'haiku', 'otro-modelo']);
+});
+
 test('mascota: se dibuja a cualquier tamaño con medios bloques, deja transparente el fondo, y "hopdeck mascot" la imprime', () => {
   const m = require('../lib/mascot');
   for (const n of [16, 24, 32, 48, 64]) {
