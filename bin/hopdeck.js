@@ -1474,22 +1474,51 @@ function selNorm(sl) {
   if (b.y < a.y || (b.y === a.y && b.x < a.x)) [a, b] = [b, a];
   return [a, b];
 }
+// La selección del chat guarda en `y` la línea del historial del terminal (absoluta), no la fila de la pantalla: así sigue sobre
+// el mismo texto aunque el chat se desplace mientras se arrastra, y puede abarcar más de lo que cabe en pantalla.
 function selRange(ty, rw) {
-  if (!E.sel || !E.sel.down) return null;
-  const [a, b] = selNorm(E.sel);
-  if (ty < a.y || ty > b.y) return null;
-  return [ty === a.y ? a.x : 0, ty === b.y ? b.x : rw - 1];
+  if (!E.sel) return null;
+  const sh = E.sessions.get(E.shown); if (!sh) return null;
+  const y = sh.term.buffer.active.viewportY + ty, [a, b] = selNorm(E.sel);
+  if (y < a.y || y > b.y) return null;
+  return [y === a.y ? a.x : 0, y === b.y ? b.x : rw - 1];
 }
 function selText(sh, sl) {
   const [a, b] = selNorm(sl); const buf = sh.term.buffer.active; const out = [];
   for (let y = a.y; y <= b.y; y++) {
-    const l = buf.getLine(buf.viewportY + y);
+    const l = buf.getLine(y);
     out.push(l ? l.translateToString(true, y === a.y ? a.x : 0, y === b.y ? b.x + 1 : sh.term.cols) : '');
   }
   return out.join('\n').replace(/\s+$/, '');
 }
+/** Copia la selección marcada y la quita. Solo se llama cuando el usuario lo pide (Ctrl+C, clic derecho), o con "copyOnSelect". */
+function copySelection(sh) {
+  const sl = E.sel; E.sel = null; stopSelScroll();
+  const t = sl && sh ? selText(sh, sl) : '';
+  if (t) { copyText(t); E.note = { t: T.copied(t.length), until: Date.now() + 3000 }; }
+}
+
+// Al arrastrar contra el borde de arriba o de abajo, el chat se desplaza solo (aunque el ratón se quede quieto) y la selección sigue.
+let selTimer = null;
+function stopSelScroll() { if (selTimer) { clearInterval(selTimer); selTimer = null; } if (E.sel) E.sel.dir = 0; }
+function selScrollTick() {
+  const sel = E.sel, sh = E.sessions.get(E.shown);
+  if (!sel || !sel.down || !sel.dir || !sh || sh.term.buffer.active.type === 'alternate') return stopSelScroll();
+  sh.term.scrollLines(-sel.dir * 2); // dir > 0: hacia arriba
+  const row = sel.dir > 0 ? 0 : embedLayout().th - 1;
+  sel.b = { x: sel.b.x, y: sh.term.buffer.active.viewportY + row };
+  render();
+}
+/** `row`: fila del ratón respecto a la zona del chat (negativa = encima, ≥ th = debajo). Pone en marcha o para el desplazamiento. */
+function selEdge(sh, row) {
+  const th = embedLayout().th, dir = row < 0 ? 1 : row >= th ? -1 : 0;
+  E.sel.dir = dir;
+  if (dir && sh.term.buffer.active.type !== 'alternate') { if (!selTimer) { selTimer = setInterval(selScrollTick, 60); selScrollTick(); } }
+  else if (selTimer) { clearInterval(selTimer); selTimer = null; }
+}
 /** Copia al portapapeles: OSC 52 (la mayoría de terminales) + comando del sistema como respaldo. */
 function copyText(t) {
+  if (process.env.HOPDECK_COPY_LOG) { try { fs.appendFileSync(process.env.HOPDECK_COPY_LOG, JSON.stringify(t) + '\n'); } catch { /* */ } return; } // pruebas: se anota en un archivo y no se toca el portapapeles
   try { process.stdout.write(`\x1b]52;c;${Buffer.from(t).toString('base64')}\x07`); } catch { /* */ }
   const run = (cmd, args) => { try { const c = cp.spawn(cmd, args, { stdio: ['pipe', 'ignore', 'ignore'] }); c.on('error', () => {}); c.stdin.on('error', () => {}); c.stdin.end(t); } catch { /* */ } };
   if (process.platform === 'darwin') run('pbcopy', []);
@@ -1570,7 +1599,7 @@ function onMouse(b, x, y, type) {
     return render();
   }
   if ((b & 32) && (b & 3) === 3) { // movimiento sin botón (hover): previsualiza la conversación bajo el cursor
-    if (S.help || S.qs || E.sel) return;
+    if (S.help || S.qs || (E.sel && E.sel.down)) return;
     if (S.fb) { const i = S.fb.off + (y - 3); if (x <= SW && y >= 3 && y <= rh - 2 && fbRows()[i] && i !== S.fb.i) { S.fb.i = i; scheduleRender(); } return; }
     if (sh) { if (x > SW) hoverChat(sh, x, y); else if (E.hover) { E.hover = null; scheduleRender(); } return; }
     if (x > SW || y < 3 || y > rh - 2) return;
@@ -1579,24 +1608,30 @@ function onMouse(b, x, y, type) {
     return;
   }
   const x0 = SW ? SW + 2 : 1, inPane = (SW ? x > SW + 1 : true) && y >= 3 && sh && sh.ready;
-  const cell = () => ({ x: clamp(x - x0, 0, embedLayout().rw - 1), y: clamp(y - 3, 0, embedLayout().th - 1) });
-  if ((b & 32) && (b & 3) === 0) { if (E.sel && E.sel.down) { E.sel.b = cell(); render(); } return; } // arrastre
-  if (type === 'm') { // soltar: copiar la selección
-    const sl = E.sel; E.sel = null;
-    if (sl && sl.down && sl.a.x === sl.b.x && sl.a.y === sl.b.y && sh && sh.ready) { // un clic sin arrastrar: si es sobre un [Image #N], se abre la imagen
-      const hit = imageMarkerAt(sh.term, sl.a.y, sl.a.x);
-      if (hit) openMarkerImage(sh, hit.n);
+  // celda del chat bajo el ratón; `y` es la línea del historial (ver selRange), así que sirve aunque el chat esté desplazado
+  const cell = () => { const L = embedLayout(); return { x: clamp(x - x0, 0, L.rw - 1), y: sh.term.buffer.active.viewportY + clamp(y - 3, 0, L.th - 1) }; };
+  if ((b & 32) && (b & 3) === 0) { // arrastre
+    if (E.sel && E.sel.down && sh) { E.sel.b = cell(); selEdge(sh, y - 3); render(); }
+    return;
+  }
+  if (type === 'm') { // soltar
+    stopSelScroll();
+    const sl = E.sel;
+    if (!sl || !sl.down) return render();
+    if (sl.a.x === sl.b.x && sl.a.y === sl.b.y) { // un clic sin arrastrar: si es sobre un [Image #N], se abre la imagen
+      E.sel = null;
+      if (sh && sh.ready) { const hit = imageMarkerAt(sh.term, sl.a.y - sh.term.buffer.active.viewportY, sl.a.x); if (hit) openMarkerImage(sh, hit.n); }
+      return render();
     }
-    if (sl && sl.down && (sl.a.x !== sl.b.x || sl.a.y !== sl.b.y) && sh) {
-      const t = selText(sh, sl);
-      if (t) { copyText(t); E.note = { t: T.copied(t.length), until: Date.now() + 3000 }; }
-    }
+    sl.down = false; // la selección se queda marcada: no se copia sola (se copia con Ctrl+C o clic derecho), salvo con "copyOnSelect": true
+    if (CFG.copyOnSelect) copySelection(sh); else E.note = { t: T.selHint, until: Date.now() + 8000 };
     return render();
   }
+  if (type === 'M' && (b & 3) === 2 && E.sel && !E.sel.down && sh) { copySelection(sh); return render(); } // clic derecho: copiar lo marcado
   if (type !== 'M' || (b & 3) !== 0) return; // solo clic izquierdo
   if (x <= SW && y === 1 && !S.fb && !S.qs && S.prompt === null && !S.help) { E.focus = 'left'; E.sel = null; S.searching = true; S.qpos = [...S.query].length; return render(); } // clic en la fila de arriba de la lista: buscar
-  if (inPane) { E.focus = 'right'; const c = cell(); E.sel = { a: c, b: c, down: true }; return render(); }
-  E.sel = null;
+  if (inPane) { E.focus = 'right'; const c = cell(); stopSelScroll(); E.sel = { a: c, b: c, down: true, dir: 0 }; return render(); }
+  stopSelScroll(); E.sel = null;
   if (S.fb && x <= SW) {
     E.focus = 'left'; const i = S.fb.off + (y - 3);
     if (S.prompt === null && y >= 3 && y <= rh - 2 && fbRows()[i]) { S.fb.i = i; return fbActivate(); }
@@ -1620,7 +1655,11 @@ function hasContent(term) {
 }
 
 function embedInput(s) {
-  E.sel = null; E.hover = null;
+  if (E.sel && !E.sel.down) { // hay texto seleccionado: Ctrl+C lo copia y Esc lo quita, sin llegar a Claude (Esc le interrumpiría)
+    if (s === '\x03') { copySelection(E.sessions.get(E.shown)); return render(); }
+    if (s === '\x1b') { E.sel = null; E.note = null; return render(); }
+  }
+  stopSelScroll(); E.sel = null; E.hover = null;
   if (s === '\x1bOP' || s === '\x1b[11~' || s === '\x1b[1;1P') { E.focus = 'left'; if (E.hideSide) { E.hideSide = false; embedResize(); } else render(); return; }
   const sh = E.sessions.get(E.shown);
   const b = sh.term.buffer.active, scrolled = b.baseY > b.viewportY;
@@ -1710,7 +1749,7 @@ function pollChats() {
 const x_any = (e) => [...e.sessions.values()].some((x) => x.working);
 
 function embedResize() {
-  invalidate(); E.sel = null;
+  invalidate(); stopSelScroll(); E.sel = null; // al cambiar el ancho las líneas se reajustan: la selección ya no marcaría lo mismo
   const { rw, th } = embedLayout();
   for (const sess of E.sessions.values()) { sess.quietUntil = Date.now() + 1500; try { sess.p.resize(rw, th); sess.term.resize(rw, th); } catch { /* */ } } // todos los chats se repintan al cambiar el tamaño
   render();

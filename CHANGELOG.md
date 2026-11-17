@@ -2,7 +2,11 @@
 
 ## Sin publicar
 
+### Cambiado
+- **Seleccionar texto del chat ya no lo copia solo.** Al soltar, la selección se queda marcada y se copia con `Ctrl+C` o con el clic derecho; `Esc` o un clic en otro sitio la quitan (`Esc` no llega a Claude mientras hay algo seleccionado, porque lo interrumpiría). Quien prefiera el comportamiento anterior puede poner `"copyOnSelect": true` en `~/.hopdeck.json`.
+
 ### Arreglado
+- **No se podía seleccionar más de lo que cabía en pantalla.** Al arrastrar contra el borde de arriba o de abajo del chat, este se desplaza solo (aunque el ratón se quede quieto) y la selección sigue. La selección ahora se ancla a las líneas del historial, no a las filas de la pantalla, así que también sigue en su sitio si usas la rueda mientras seleccionas.
 - **El spinner de «trabajando» salía sin que Claude estuviera haciendo nada**, a veces en chats donde ni estabas. Hopdeck marcaba un chat como trabajando si escribía cualquier cosa en el último segundo, y eso también ocurre al mover o redimensionar los paneles (todos los chats se repintan), al cambiar de ventana o al actualizarse la barra de estado. Ahora solo cuenta como trabajando cuando la pantalla de Claude muestra «esc to interrupt», y el repintado justo después de redimensionar se ignora. Si una versión de Claude cambiara ese texto, `HOPDECK_BUSY=output` devuelve el criterio anterior.
 
 ## 1.4.0

@@ -178,7 +178,7 @@ Se refresca solo cada pocos segundos y no modifica nada en el repositorio. Neces
 ### Scroll y copiar
 
 - **Scroll** en el chat: rueda del ratón o `PgUp` / `PgDn`; `End` o escribir algo te devuelve al final.
-- **Copiar:** arrastra con el ratón sobre el chat y el texto queda en el portapapeles. `F3` apaga el ratón si prefieres seleccionar con el terminal (o usa `Shift`+arrastrar).
+- **Seleccionar y copiar:** arrastra con el ratón sobre el chat para marcar texto; no se copia solo. Cópialo con `Ctrl+C` o con el clic derecho, y quita la selección con `Esc` o haciendo clic en otro sitio. Si arrastras hasta el borde de arriba o de abajo, el chat se desplaza solo y la selección sigue, así que puedes marcar mucho más de lo que cabe en pantalla. Si prefieres el comportamiento anterior (copiar al soltar), pon `"copyOnSelect": true` en `~/.hopdeck.json`. `F3` apaga el ratón si prefieres seleccionar con el terminal (o usa `Shift`+arrastrar).
 
 ### Otros detalles
 
@@ -233,6 +233,7 @@ Claves de `~/.hopdeck.json` que puedes editar a mano:
 |---|---|---|
 | `notify` | Aviso de escritorio al terminar un chat | `true` |
 | `mouse` | Ratón activado (`F3` lo alterna) | `true` |
+| `copyOnSelect` | Copiar al portapapeles en cuanto sueltas la selección del chat | `false` |
 | `sidebar` | Ancho de la lista (`[` y `]` lo ajustan) | automático |
 | `maxImages` | Imágenes máximas por conversación en la galería | `200` |
 | `previewMsgs` | Mensajes mostrados en la vista previa | `12` |

@@ -398,6 +398,59 @@ test('tema: t y F9 cambian entre claro y oscuro sin reiniciar, repintan todo y l
   } finally { await h.close(); }
 });
 
+// ───────────── seleccionar texto del chat ─────────────
+const muchas = Array.from({ length: 80 }, (_, i) => 'linea ' + String(i + 1).padStart(2, '0')).join('\r\n'); // más de lo que cabe en pantalla
+const copiado = (log) => { try { return fs.readFileSync(log, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)); } catch { return []; } };
+
+test('seleccionar en el chat no copia solo: se copia con Ctrl+C o con el clic derecho', opts, async () => {
+  const root = tmp('hopdeck-ui-sel-'); const log = path.join(root, 'copiado.log');
+  const fx = makeFixture(root, [alpha()]);
+  const h = launchHub({ root, fx, cwd: fx.cwds.alpha, env: { FAKE_PRINT: muchas, HOPDECK_COPY_LOG: log } });
+  try {
+    await h.waitFor(/Sesión dos/, 'lista');
+    const uno = h.find('Sesión uno'); h.mouse(0, 5, uno.y); h.mouse(0, 5, uno.y, 'm');
+    await h.waitFor(/linea 80/, 'chat con mucho texto');
+    const y = h.find('linea 80').y;
+    const arrastrar = async () => { h.mouse(0, 39, y); h.mouse(32, 45, y); h.mouse(32, 50, y); h.mouse(0, 50, y, 'm'); await h.sleep(400); };
+    await arrastrar();
+    assert.deepEqual(copiado(log), [], 'al soltar la selección no se copia nada');
+    await h.waitFor(/Ctrl\+C o clic derecho/, 'avisa de cómo copiar');
+    h.write('\x03');
+    await h.waitFor(/Copiado/, 'Ctrl+C copia lo seleccionado');
+    assert.equal(copiado(log).length, 1);
+    assert.match(copiado(log)[0], /inea 80/, 'lo marcado (de la 2.ª letra en adelante, donde se pulsó)');
+    await arrastrar();                                       // otra selección: ahora con el clic derecho
+    assert.equal(copiado(log).length, 1, 'tampoco se copió sola esta vez');
+    h.mouse(2, 48, y); h.mouse(2, 48, y, 'm');
+    await h.sleep(500); assert.equal(copiado(log).length, 2, 'el clic derecho copia');
+  } finally { await h.close(); }
+});
+
+test('seleccionar en el chat: arrastrar contra el borde desplaza el chat y la selección sigue (se puede marcar más de una pantalla)', opts, async () => {
+  const root = tmp('hopdeck-ui-selscroll-'); const log = path.join(root, 'copiado.log');
+  const fx = makeFixture(root, [alpha()]);
+  const h = launchHub({ root, fx, cwd: fx.cwds.alpha, env: { FAKE_PRINT: muchas, HOPDECK_COPY_LOG: log } });
+  try {
+    await h.waitFor(/Sesión dos/, 'lista');
+    const uno = h.find('Sesión uno'); h.mouse(0, 5, uno.y); h.mouse(0, 5, uno.y, 'm');
+    await h.waitFor(/linea 80/, 'chat con mucho texto');
+    assert.doesNotMatch(h.screen(), /linea 40/, 'al principio solo se ve el final');
+    const y = h.find('linea 80').y;
+    h.mouse(0, 80, y);                                       // empieza abajo, pasado el final de la línea (así entra entera)...
+    h.mouse(32, 50, y - 3);
+    h.mouse(32, 50, 1);                                      // ...y arrastra por encima del chat, y se queda quieto ahí
+    await h.waitFor(/linea 3\d/, 'el chat se desplaza solo hacia arriba', 6000);
+    h.mouse(0, 50, 1, 'm');
+    await h.sleep(300);
+    h.write('\x03');
+    await h.waitFor(/Copiado/, 'copia la selección');
+    const t = copiado(log)[0];
+    assert.match(t, /linea 80/, 'incluye lo que se veía al empezar');
+    assert.match(t, /linea 50/, 'y lo que estaba fuera de la pantalla');
+    assert.ok(t.split('\n').length > 30, 'más líneas de las que caben en pantalla');
+  } finally { await h.close(); }
+});
+
 // ───────────── indicador «trabajando» (el spinner de la lista) ─────────────
 const SPIN = /[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/;
 const listaIzq = (h) => h.lines().map((l) => l.slice(0, 36)).join('\n'); // la lista ocupa las primeras columnas

@@ -178,7 +178,7 @@ It refreshes itself every few seconds and never modifies the repository. It need
 ### Scroll and copy
 
 - **Scroll** the chat with the mouse wheel or `PgUp` / `PgDn`; `End` or typing returns you to the bottom.
-- **Copy:** drag with the mouse over the chat and the text goes to the clipboard. `F3` turns the mouse off if you prefer terminal selection (or use `Shift`+drag).
+- **Select and copy:** drag with the mouse over the chat to mark text; it is not copied by itself. Copy it with `Ctrl+C` or right click, and clear the selection with `Esc` or by clicking elsewhere. If you drag to the top or bottom edge the chat scrolls on its own and the selection follows, so you can mark far more than fits on screen. For the old behaviour (copy on release) set `"copyOnSelect": true` in `~/.hopdeck.json`. `F3` turns the mouse off if you prefer terminal selection (or use `Shift`+drag).
 
 ### More
 
@@ -232,6 +232,7 @@ Keys in `~/.hopdeck.json` you can edit by hand:
 |---|---|---|
 | `notify` | Desktop notification when a chat finishes | `true` |
 | `mouse` | Mouse enabled (`F3` toggles) | `true` |
+| `copyOnSelect` | Copy to the clipboard as soon as you release a chat selection | `false` |
 | `sidebar` | List width (`[` and `]` adjust it) | automatic |
 | `maxImages` | Max images per conversation in the gallery | `200` |
 | `previewMsgs` | Messages shown in the preview | `12` |
