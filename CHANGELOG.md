@@ -5,6 +5,14 @@
 ### Nuevo
 - **Ancho de los paneles con el ratón.** Agarra con el cursor la línea `│` que separa la lista del chat, o el chat del panel de git, y arrástrala a izquierda o derecha. Cada panel puede medir entre el 15 % y el 50 % del ancho del terminal (nunca menos de 20 columnas), el chat siempre conserva su ancho mínimo y el ancho se recuerda para la próxima vez. Solo en el terminal integrado (en tmux, arrastra el borde del panel como siempre).
 
+### Mejorado
+- **La búsqueda es más fácil de encontrar y falla menos.**
+  - **Se ve de dónde parte:** arriba a la derecha de la lista hay siempre un `⌕ / buscar`; pulsando `/` (o haciendo clic en esa fila) el cuadro de búsqueda ocupa el lugar del título, arriba, y no en la última fila. El pie dice cuántos resultados hay, dónde se busca y qué teclas valen.
+  - **`⏎` abre la conversación marcada en el momento:** al escribir se marca el primer resultado y `⏎` lo abre, sin tener que pulsar `⏎` dos veces como antes (el salto rápido `Ctrl+P` ya funcionaba así).
+  - **Encuentra más:** las palabras valen en cualquier orden y sin importar mayúsculas ni acentos («vision roles» encuentra «Roles y visión»), y se comparan con el proyecto, el título y el primer mensaje. El salto rápido tampoco distingue acentos.
+  - **Si no coincide ningún título, se busca sola dentro del contenido** de las conversaciones (ya no hace falta saber que `Tab` lo activa). Con `Tab` se fuerza también cuando sí hay coincidencias.
+  - **Sin resultados lo dice:** «Sin resultados para …» y qué hacer, en lugar de una lista vacía.
+
 ### Arreglado
 - **Una misma conversación aparecía varias veces** (con el mismo título y un `#xxxx` distinto). Cada vez que reanudas una conversación, o Claude Code la continúa tras agotar el contexto, crea un archivo nuevo que copia todo el historial anterior. Hopdeck ahora reconoce que comparten el primer mensaje, los junta en una sola fila y abre la que tiene el último mensaje, que ya contiene todo lo anterior. La fila lleva `↻N` (continuada N veces). El `#xxxx` queda solo para conversaciones realmente distintas con el mismo título. La fecha del archivo no sirve para elegir: también cambia al abrir una conversación vieja.
 - **macOS: el cuadro del hover salía sin la imagen** cuando el formato no lo entendía el decodificador propio (WebP, GIF, HEIC, TIFF, PNG entrelazado o imágenes enormes). Ahora esas imágenes se convierten con `sips`, que viene con macOS. Y si aun así no se puede leer, el cuadro indica el formato («No se puede previsualizar este formato (image/webp)») para saber por qué.

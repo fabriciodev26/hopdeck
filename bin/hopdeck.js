@@ -13,7 +13,7 @@ const readline = require('readline');
 
 const { LANG, T } = require('../lib/i18n');
 const { TRUE, NOCOL, LIGHT, setTheme, isLight, fg, bg, R, C, cw, strW, fit, clean } = require('../lib/style');
-const { baseName, tidy, home, shortPath, fuzzy, wrapText } = require('../lib/text');
+const { baseName, tidy, home, shortPath, fold, queryWords, matchWords, fuzzy, wrapText } = require('../lib/text');
 const hist = require('../lib/history');
 const { CONFIG_DIR, CACHE_FILE, textOf, isType, cacheLoad, cacheSave, readSession, decodeDir, projectDirs, buildProject, beginScan, endScan } = hist;
 const images = require('../lib/images');
@@ -126,7 +126,7 @@ function ago(ms) {
 }
 
 // ───────────────────────── estado ─────────────────────────
-const S = { qpos: 0, pc: 0, fb: null, confirmMk: null, confirmClose: null, more: new Set(), qs: null, promptKind: 'folder', renameTarget: null, deep: false, deepHits: null, showHidden: false, prompt: null, help: false, loading: false, projects: [], pi: 0, si: 0, focus: 0, query: '', searching: false, poff: 0, soff: 0, flash: '', c: 0, coff: 0, open: null, live: new Set(), liveKey: '' };
+const S = { auto: false, qpos: 0, pc: 0, fb: null, confirmMk: null, confirmClose: null, more: new Set(), qs: null, promptKind: 'folder', renameTarget: null, deep: false, deepHits: null, showHidden: false, prompt: null, help: false, loading: false, projects: [], pi: 0, si: 0, focus: 0, query: '', searching: false, poff: 0, soff: 0, flash: '', c: 0, coff: 0, open: null, live: new Set(), liveKey: '' };
 const SIDEBAR = process.argv.includes('--sidebar');
 let EMBED = false; // vista dividida con terminal embebido (Windows / sin tmux)
 const E = { sessions: new Map(), shown: null, focus: 'left', pend: null, deps: null, mouse: CFG.mouse !== false, hideSide: false, git: !!CFG.git, note: null, sel: null, gallery: null, hover: null, sixelDetected: false, cell: { w: 10, h: 20 }, sixelKey: null, sixelAt: 0, sixelStale: false, sixelRetry: null };
@@ -158,15 +158,17 @@ const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 const sessTag = (s) => (s.parts ? '↻' + s.parts : s.dup ? '#' + s.id.slice(0, 4) : '');
 
 function view() {
-  const q = S.query.trim().toLowerCase();
+  // La búsqueda son palabras sueltas, sin importar el orden, mayúsculas ni acentos: «vistas roles» encuentra «Roles y vistas».
+  // Cada conversación se compara con proyecto + título + primer mensaje; el proyecto entero sale si lo que se busca está en su nombre o ruta.
+  const ws = queryWords(S.query);
   const base = S.projects.filter((p) => S.showHidden || !p.hidden);
   const vis = (x) => S.showHidden || !CFG.archived.includes(x.id);
-  if (!q) return base.map((p) => ({ p, ss: p.sessions.filter(vis) }));
-  const hitS = (x) => (x.title + ' ' + x.first).toLowerCase().includes(q) || !!(S.deepHits && S.deepHits.has(x.id));
+  if (!ws.length) return base.map((p) => ({ p, ss: p.sessions.filter(vis) }));
+  const hitS = (p, x) => matchWords(ws, x._f || (x._f = fold(p.name + ' ' + x.title + ' ' + x.first))) || !!(S.deepHits && S.deepHits.has(x.id));
   const out = [];
   for (const p of base) {
-    const hit = (p.name + ' ' + p.cwd).toLowerCase().includes(q);
-    const ss = (hit ? p.sessions : p.sessions.filter(hitS)).filter(vis);
+    const hit = matchWords(ws, p._f || (p._f = fold(p.name + ' ' + p.cwd)));
+    const ss = (hit ? p.sessions : p.sessions.filter((x) => hitS(p, x))).filter(vis);
     if (hit || ss.length) out.push({ p, ss });
   }
   return out;
@@ -177,8 +179,11 @@ let deepT = null, deepTok = 0, deepPrev = null, deepJob = null;
 function queryChanged() {
   clearTimeout(deepT); deepTok++; S.deepHits = null;
   if (deepJob) { deepJob.cancel(); deepJob = null; }
-  if (!S.deep || !S.query.trim()) deepPrev = null;
-  if (!S.deep || S.query.trim().length < 3) { if (!reloading) S.loading = false; return; }
+  // Si ningún título ni proyecto coincide, se busca solo dentro del contenido sin que haya que pedirlo con Tab
+  S.auto = !S.deep && S.query.trim().length >= 3 && !view().length;
+  const deepOn = S.deep || S.auto;
+  if (!deepOn || !S.query.trim()) deepPrev = null;
+  if (!deepOn || S.query.trim().length < 3) { if (!reloading) S.loading = false; return; }
   const tok = deepTok; S.loading = true; ensureSpin();
   deepT = setTimeout(() => {
     const q = S.query.trim().toLowerCase(), hits = new Set();
@@ -336,18 +341,20 @@ function chatMark(id) {
 
 /** Trocea `text` en segmentos [[texto, estilo]] resaltando las coincidencias (sin distinguir mayúsculas) con la búsqueda `q` (en minúsculas). */
 function hl(text, q, style) {
-  const t = String(text);
-  if (!q) return [[t, style]];
-  const low = t.toLowerCase();
-  if (low.length !== t.length) return [[t, style]]; // algunas letras cambian de largo al pasar a minúsculas: no se resalta
-  const out = []; let i = 0;
-  for (let at = low.indexOf(q); at >= 0; at = low.indexOf(q, i)) {
-    if (at > i) out.push([t.slice(i, at), style]);
-    out.push([t.slice(at, at + q.length), C.brand + C.bold]);
-    i = at + q.length;
+  const t = String(text), ws = queryWords(q);
+  if (!ws.length) return [[t, style]];
+  const f = fold(t);
+  if (f.length !== t.length) return [[t, style]]; // algunas letras cambian de largo al plegarlas: no se resalta
+  const on = new Array(t.length).fill(false); // cada palabra de la búsqueda, en cualquier parte y sin importar acentos ni mayúsculas
+  for (const w of ws) for (let at = f.indexOf(w); at >= 0; at = f.indexOf(w, at + w.length)) for (let i = at; i < at + w.length; i++) on[i] = true;
+  if (!on.includes(true)) return [[t, style]];
+  const out = [];
+  for (let i = 0; i < t.length;) {
+    let j = i; while (j < t.length && on[j] === on[i]) j++;
+    out.push([t.slice(i, j), on[i] ? C.brand + C.bold : style]);
+    i = j;
   }
-  if (i < t.length) out.push([t.slice(i), style]);
-  return out.length ? out : [[t, style]];
+  return out;
 }
 
 /** Resumen de los chats abiertos para la cabecera de la lista: trabajando ⠋, terminados sin ver ✔, abiertos ●. */
@@ -371,9 +378,19 @@ function frameTree(W, H) {
   const bodyH = H - 5;
   S.coff = scroll(S.coff, S.c, bodyH);
   const lines = [];
-  lines.push(fit([[' » ', C.brand], ['Hop', C.brand + C.bold], ['deck', C.text + C.bold], ['  ' + S.projects.length, C.dim], [S.loading ? '  ' + spin() : '', C.accent], ...liveSummary()], W));
+  const searchOn = !S.fb && !S.qs && S.prompt === null && !S.help && (S.searching || !!S.query.trim()); // hay una búsqueda en marcha
+  const head = [[' » ', C.brand], ['Hop', C.brand + C.bold], ['deck', C.text + C.bold], ['  ' + S.projects.length, C.dim], [S.loading && !searchOn ? '  ' + spin() : '', C.accent], ...liveSummary()];
+  // «⌕ / buscar» siempre a la vista, arriba a la derecha (sin la palabra si el título y los chats abiertos ya ocupan el sitio)
+  const headW = head.reduce((a, [t]) => a + strW(t), 0), longHint = ' ⌕ / ' + T.k.find + ' ', hint = headW + strW(longHint) <= W ? longHint : headW + 5 <= W ? ' ⌕ / ' : '';
+  lines.push(searchOn
+    // el cuadro de búsqueda ocupa el lugar del título, arriba, donde se mira primero
+    ? fit([[' ⌕ ', C.accent], ...withCursor(S.query, S.searching ? S.qpos : [...S.query].length, S.searching), [S.query ? '' : ' ' + T.searchPh, C.dim]], W)
+    : hint && !S.fb && !S.qs && S.prompt === null && !S.help ? fit(head, W - strW(hint)) + fit([[' ⌕ ', C.accent], ['/ ', C.accent + C.bold], [hint.slice(5), C.dim]], strW(hint))
+    : fit(head, W));
   lines.push(C.faint + '─'.repeat(W) + R);
   const sq0 = S.query.trim().toLowerCase(); // búsqueda activa: se resaltan las coincidencias
+  const qWords = searchOn ? queryWords(S.query) : [];
+  const nHits = searchOn ? L.filter((x) => x.t === 's' || (x.t === 'p' && !x.open)).length : 0; // conversaciones que coinciden (o el proyecto, si coincidió su nombre)
   const qsList = S.qs ? qsItems() : null;
   const fbList = S.fb && !S.qs ? fbRows() : null;
   if (fbList) { S.fb.i = clamp(S.fb.i, 0, Math.max(0, fbList.length - 1)); S.fb.off = scroll(S.fb.off, S.fb.i, bodyH); lines[0] = fit([[' » ' + T.fbTitle, C.accent + C.bold]], W); }
@@ -406,6 +423,11 @@ function frameTree(W, H) {
     }
     if (S.help) { const t = T.help[r]; lines.push(fit([[t ? ' ' + t : '', r === 0 ? C.accent + C.bold : C.dim]], W)); continue; }
     const e = L[S.coff + r];
+    if (!e && searchOn && !L.length && r <= 2) { // búsqueda sin resultados: se dice, y se explica qué hacer
+      const msg = r === 0 ? [[' ' + T.noRes(S.query.trim()), C.warn]]
+        : r === 2 ? [[' ' + ((S.deep || S.auto) ? (S.loading ? spin() + ' ' + T.searchingContent : '') : T.tryContent), C.dim]] : [];
+      lines.push(fit(msg, W)); continue;
+    }
     if (!e) { lines.push(' '.repeat(W)); continue; }
     const sel = S.coff + r === S.c;
     const base = sel ? (EMBED && E.focus === 'right' ? C.selOff : C.selOn) : '';
@@ -430,7 +452,7 @@ function frameTree(W, H) {
     } else {
       const [mk, mc] = chatMark(e.s.id);
       const arch = CFG.archived.includes(e.s.id), tag = sessTag(e.s);
-      const ts = sel ? C.text + C.bold : arch ? C.dim : C.text, inTxt = sq0 && !e.s.title.toLowerCase().includes(sq0);
+      const ts = sel ? C.text + C.bold : arch ? C.dim : C.text, inTxt = qWords.length && !matchWords(qWords, fold(e.s.title)); // ⌕: coincide por el proyecto, el primer mensaje o el contenido
       lines.push(fit([mark, ['    ', ''], [mk, mc], ...hl(e.s.title, sq0, ts), ...(inTxt ? [[' ⌕', C.dim]] : [])], W - 13, base) +
         fit([[tag.padEnd(6), C.accent], [ago(e.s.mtime).padStart(6), C.dim], [' ', '']], 13, base));
     }
@@ -439,7 +461,10 @@ function frameTree(W, H) {
   lines.push(C.faint + '─'.repeat(W) + R);
   const br = cur && !S.flash ? gitBranch(cur.p.cwd) : '';
   const note = EMBED && E.note;
-  lines.push(fit(S.flash ? [[' ' + S.flash, C.warn]] : S.fb ? [[S.prompt !== null ? ' ' + T.mkIn + ' ' : ' ⌂ ', C.dim], [tailFit(S.fb.dir === '' ? T.fbDrives : shortPath(S.fb.dir) + (S.prompt !== null ? path.sep : ''), W - 14), C.accent]] : note ? [[' ' + note.t, C.ok]]
+  const deepOn = S.deep || S.auto;
+  lines.push(fit(S.flash ? [[' ' + S.flash, C.warn]] : searchOn // durante una búsqueda, esta fila dice cuántos resultados hay y dónde se busca
+    ? [[' ', ''], nHits ? [T.found(nHits), C.accent + C.bold] : [T.noMatch, C.warn], deepOn ? [S.loading ? '  ' + spin() + ' ' + T.searchingContent : '  · ' + T.inContent, C.dim] : ['', '']]
+    : S.fb ? [[S.prompt !== null ? ' ' + T.mkIn + ' ' : ' ⌂ ', C.dim], [tailFit(S.fb.dir === '' ? T.fbDrives : shortPath(S.fb.dir) + (S.prompt !== null ? path.sep : ''), W - 14), C.accent]] : note ? [[' ' + note.t, C.ok]]
     : [[br ? ' ⎇ ' + br + '  ' : '', C.accent], [cur ? (br ? '' : ' ⌂ ') + shortPath(cur.p.cwd) : '', C.dim]], W));
   if (S.qs) {
     lines.push(fit([[' ⌕ ', C.accent], ...withCursor(S.qs.q, S.qs.pc), [S.qs.q ? '' : ' ' + T.qsHint, C.dim]], W));
@@ -448,9 +473,10 @@ function frameTree(W, H) {
     lines.push(fit([[rn ? ' ✎ ' : ' ⌂ ', C.accent], ...withCursor(S.prompt, S.pc), [S.prompt ? '' : ' ' + (rn ? T.renameLbl : T.pathPrompt) + '…', C.dim]], W));
   } else if (S.fb) {
     lines.push(fit(S.fb.filt || S.fb.q ? [[' / ', C.accent], ...withCursor(S.fb.q, S.fb.qp, S.fb.filt)] : [[' ' + T.fbHint, C.dim]], W));
-  } else if (S.searching || S.query) {
-    lines.push(fit([[' / ', C.accent], ...withCursor(S.query, S.searching ? S.qpos : [...S.query].length, S.searching),
-      ['  Tab ' + (S.deep ? '◉ ' : '○ ') + T.deep, S.deep ? C.ok : C.dim]], W));
+  } else if (searchOn) {
+    // teclas de la búsqueda: mientras se escribe, ⏎ abre la conversación marcada; con la búsqueda ya aceptada, / permite editarla
+    lines.push(fit([[' ⏎', C.accent], [' ' + T.k.open + '  ', C.dim], S.searching ? ['Tab', C.accent] : ['/', C.accent], S.searching ? [' ' + (deepOn ? '◉ ' : '○ ') + T.deep + '  ', deepOn ? C.ok : C.dim] : [' ' + T.kEdit + '  ', C.dim],
+      ['esc', C.accent], [' ' + (S.searching ? T.kEsc : T.kClear), C.dim]], W));
   } else {
     const k = T.k, segs = [[' ', '']];
     const keys = !cur ? [['⏎', k.open], ['n', k.neu], ['/', k.find], ['?', T.kHelp]]
@@ -728,11 +754,21 @@ function onKeyTree(raw) {
   if (S.fb) return fbKey(k, raw);
   if (S.searching) {
     if (k === 'esc') { S.query = ''; S.searching = false; S.c = 0; queryChanged(); }
-    else if (k === 'enter') S.searching = false;
+    else if (k === 'enter') {
+      S.searching = false;
+      const en = L[S.c]; // con una conversación marcada, ⏎ la abre ya (como el salto rápido); sobre un proyecto solo termina de escribir
+      if (en && en.t === 's') { render(); return launch(en.p, en.s); }
+    }
     else if (k === '\t') { S.deep = !S.deep; queryChanged(); }
     else if (k === 'up') S.c = Math.max(0, S.c - 1);
     else if (k === 'down') S.c = Math.min(L.length - 1, S.c + 1);
-    else { const r = editBuf(S.query, S.qpos, k, raw); if (r) { const ch = r.s !== S.query; S.query = r.s; S.qpos = r.pos; if (ch) { S.c = 0; queryChanged(); } } }
+    else {
+      const r = editBuf(S.query, S.qpos, k, raw);
+      if (r) {
+        const ch = r.s !== S.query; S.query = r.s; S.qpos = r.pos;
+        if (ch) { queryChanged(); const i = flatList().findIndex((x) => x.t === 's'); S.c = S.query.trim() && i >= 0 ? i : 0; } // se marca el primer resultado
+      }
+    }
     return render();
   }
   S.flash = '';
@@ -1503,6 +1539,7 @@ function sidebarMouse(b, x, y, type, rows = process.stdout.rows || 30) {
     return render();
   }
   if (type !== 'M' || (b & 3) !== 0 || (b & 32)) return; // solo clic izquierdo (no soltar, ni arrastrar, ni otros botones)
+  if (y === 1 && !S.help && !S.fb && !S.qs && S.prompt === null) { S.searching = true; S.qpos = [...S.query].length; return render(); } // clic en la fila de arriba: buscar
   if (S.help || S.prompt !== null || y < 3 || y > rows - 3) return; // las filas de la lista van de la 3 a rows-3
   if (S.qs) { const i = S.qs.off + (y - 3); if (qsItems()[i]) { S.qs.i = i; return onKeyTree('\r'); } return; }
   if (S.fb) { const i = S.fb.off + (y - 3); if (fbRows()[i]) { S.fb.i = i; fbActivate(); } return; }
@@ -1557,6 +1594,7 @@ function onMouse(b, x, y, type) {
     return render();
   }
   if (type !== 'M' || (b & 3) !== 0) return; // solo clic izquierdo
+  if (x <= SW && y === 1 && !S.fb && !S.qs && S.prompt === null && !S.help) { E.focus = 'left'; E.sel = null; S.searching = true; S.qpos = [...S.query].length; return render(); } // clic en la fila de arriba de la lista: buscar
   if (inPane) { E.focus = 'right'; const c = cell(); E.sel = { a: c, b: c, down: true }; return render(); }
   E.sel = null;
   if (S.fb && x <= SW) {

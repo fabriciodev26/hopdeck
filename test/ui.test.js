@@ -67,12 +67,12 @@ test('buscadores con cursor: / y Ctrl+P aceptan flechas, Inicio/Fin y Supr', opt
     await h.waitFor(/alpha/, 'lista');
     h.write('/'); h.write('apha');
     h.write('\x1b[D\x1b[D\x1b[D'); h.write('l');      // a|pha → al|pha
-    await h.waitFor(/ \/ al▏pha/, 'cursor en medio del texto de búsqueda');
+    await h.waitFor(/⌕ al▏pha/, 'cursor en medio del texto de búsqueda (arriba, en el lugar del título)');
     assert.doesNotMatch(h.screen(), /beta/, 'el filtro "alpha" oculta beta');
-    h.write('\x1b'); await h.waitGone(/ \/ al/, 'Esc limpia la búsqueda');
+    h.write('\x1b'); await h.waitGone(/⌕ al/, 'Esc limpia la búsqueda');
 
     h.write('\x10');                                  // Ctrl+P
-    await h.waitFor(/⌕/, 'salto rápido');
+    await h.waitFor(/saltar a cualquier conversación/, 'salto rápido');
     h.write('xyz'); h.write('\x1b[H'); h.write('b');
     await h.waitFor(/⌕ ▏?b▏?xyz|⌕ b▏xyz/, 'Inicio mueve el cursor al principio');
     h.write('\x1b[3~'); h.write('\x1b[3~'); h.write('\x1b[3~');
@@ -399,7 +399,7 @@ test('tema: t y F9 cambian entre claro y oscuro sin reiniciar, repintan todo y l
 });
 
 // ───────────── búsqueda dentro del contenido (Tab) ─────────────
-test('búsqueda en el contenido: / y Tab encuentran una conversación por lo que se dijo en ella, no por su título', opts, async () => {
+test('búsqueda en el contenido: si ningún título coincide, se busca sola dentro de las conversaciones (y Tab la fuerza)', opts, async () => {
   const root = tmp('hopdeck-ui-deep-');
   const fx = makeFixture(root, [{ name: 'alpha', sessions: [
     { id: 'e1', first: 'primer mensaje', ai: 'Sesión uno', assistant: 'Usé la zanahoria-mágica para resolverlo', ageH: 1 },
@@ -409,12 +409,52 @@ test('búsqueda en el contenido: / y Tab encuentran una conversación por lo que
   try {
     await h.waitFor(/Sesión dos/, 'lista');
     h.write('/'); await h.sleep(150);
-    h.write('zanahoria');
-    await h.sleep(500);
-    assert.doesNotMatch(h.lines().slice(2, 12).join('\n'), /Sesión uno/, 'sin Tab no se encuentra por el contenido');
-    h.write('\t');                                    // Tab: buscar también dentro del texto
-    await h.waitFor(/Sesión uno/, 'la conversación que menciona la palabra aparece', 15000);
+    h.write('zanahoria');                             // ningún título lo contiene: sin pedirlo, se busca en el contenido
+    await h.waitFor(/1 resultado/, 'dice cuántos hay: la conversación que menciona la palabra aparece sola', 15000);
+    await h.waitFor(/en el contenido/, 'y que se buscó dentro del contenido');
+    assert.match(h.lines().slice(2, 12).join('\n'), /Sesión uno/);
     assert.doesNotMatch(h.lines().slice(2, 12).join('\n'), /Sesión dos/, 'y la que no la menciona, no');
     assert.match(h.lines().slice(2, 12).join('\n'), /⌕/, 'marcada con ⌕: coincide dentro del texto, no en el título');
+    h.write('\x1b');
+    // con coincidencias en los títulos no se rastrea el contenido; Tab sí lo pide
+    h.write('/'); await h.sleep(150); h.write('sesion');
+    await h.waitFor(/2 resultados/, '«sesion» (sin tilde) encuentra «Sesión uno» y «Sesión dos»');
+    h.write('\t');
+    await h.waitFor(/◉ contenido/, 'Tab activa la búsqueda en el contenido');
+  } finally { await h.close(); }
+});
+
+test('búsqueda: palabras en cualquier orden, sin importar acentos; ⏎ abre el primer resultado; sin resultados se explica', opts, async () => {
+  const root = tmp('hopdeck-ui-find-');
+  const fx = makeFixture(root, [alpha(), { name: 'beta', sessions: [{ id: 'b1', first: 'hola beta', ai: 'Cosa beta', ageH: 3 }] }]);
+  const h = launchHub({ root, fx, cwd: fx.cwds.alpha });
+  try {
+    await h.waitFor(/Sesión dos/, 'lista');
+    assert.match(h.lines()[0], /⌕ \/ buscar/, 'el aviso de cómo buscar está siempre arriba a la derecha');
+    h.write('/'); await h.sleep(150);
+    h.write('dos sesion');                            // al revés y sin tilde
+    await h.waitFor(/1 resultado/, 'encuentra «Sesión dos»');
+    assert.doesNotMatch(h.screen(), /Sesión uno/);
+    h.write('\r');                                    // ⏎ abre la conversación marcada, sin un segundo ⏎
+    await h.waitFor(/FAKE CLAUDE/, 'el chat se abre directamente');
+    h.write('\x1bOP'); await h.sleep(200);            // F1: vuelve a la lista
+    h.write('\x1b'); await h.sleep(150);              // esc: limpia el filtro
+    h.write('/'); await h.sleep(150);
+    h.write('qqqqzzzz');
+    await h.waitFor(/Sin resultados para «qqqqzzzz»/, 'si no hay nada, se dice');
+    await h.waitFor(/en el contenido/, 'y se rastreó el contenido sin pedirlo');
+  } finally { await h.close(); }
+});
+
+test('búsqueda: un clic en la fila de arriba de la lista empieza a buscar', opts, async () => {
+  const root = tmp('hopdeck-ui-findclick-');
+  const fx = makeFixture(root, [alpha()]);
+  const h = launchHub({ root, fx, cwd: fx.cwds.alpha });
+  try {
+    await h.waitFor(/Sesión dos/, 'lista');
+    h.mouse(0, 8, 1); h.mouse(0, 8, 1, 'm');          // clic en el título de la lista
+    await h.waitFor(/⌕ ▏/, 'caja de búsqueda abierta, con el cursor');
+    h.write('uno');
+    await h.waitFor(/1 resultado/, 'se escribe directamente');
   } finally { await h.close(); }
 });

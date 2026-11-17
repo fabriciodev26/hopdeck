@@ -68,6 +68,22 @@ test('fuzzy: subsecuencias, orden y rechazo', () => {
   assert.ok(hd.fuzzy('mes fact', 'Facturas del mes') >= 0, 'varias palabras en cualquier orden');
 });
 
+test('búsqueda: sin acentos ni mayúsculas, palabras en cualquier orden, y el resaltado sigue al texto original', () => {
+  const t = require('../lib/text');
+  assert.equal(t.fold('Visión ÑANDÚ'), 'vision nandu');
+  assert.equal(t.fold('İstanbul 😀').length, 'İstanbul 😀'.length, 'mide lo mismo que el original');
+  const ws = t.queryWords('  ROLES   vision ');
+  assert.deepEqual(ws, ['roles', 'vision']);
+  assert.ok(t.matchWords(ws, t.fold('Vistas: visión por roles')), 'cualquier orden');
+  assert.ok(!t.matchWords(ws, t.fold('solo roles')), 'todas las palabras tienen que estar');
+  assert.ok(hd.fuzzy('vision', 'Visión general') >= 0, 'el salto rápido tampoco distingue acentos');
+  const st = 'x';
+  const marcado = (txt, q) => hd.hl(txt, q, st).filter(([, s]) => s !== st).map(([x]) => x);
+  assert.deepEqual(marcado('Visión de roles', 'vision roles'), ['Visión', 'roles'], 'resalta cada palabra, con su tilde original');
+  assert.deepEqual(marcado('abc', 'xyz'), []);
+  assert.equal(hd.hl('Visión de roles', 'vision roles', st).map(([x]) => x).join(''), 'Visión de roles', 'el texto no cambia');
+});
+
 test('wrapText: respeta el ancho y parte palabras largas', () => {
   for (const line of hd.wrapText('uno dos tres cuatro cinco seis siete ocho', 12)) assert.ok(hd.strW(line) <= 12, line);
   const long = hd.wrapText('x'.repeat(30), 10);
