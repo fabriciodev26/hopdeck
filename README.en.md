@@ -5,6 +5,8 @@
   </picture>
 </p>
 
+<p align="center"><img alt="The Hopdeck mascot: an orange toad with headphones" src="docs/mascot.png" width="130"></p>
+
 <p align="center"><b>Hop between your Claude Code projects and conversations without leaving the terminal.</b></p>
 
 [Español](README.md) · **English**
@@ -192,6 +194,7 @@ It refreshes itself every few seconds and never modifies the repository. It need
 | `hopdeck` | Opens Hopdeck |
 | `hopdeck shortcut on` / `hopdeck shortcut off` | Installs or removes the shortcut so that `claude` opens Hopdeck |
 | `hopdeck theme light` / `dark` / `auto` | Changes the color theme and remembers it (`hopdeck theme` shows the current one) |
+| `hopdeck mascot` | Draws the mascot in the terminal (`--size small\|normal\|large`; `--plain` draws it without colors). It also shows on Hopdeck's start screen |
 | `hopdeck uninstall` | **Uninstalls Hopdeck completely**: the shortcut, your preferences and cache, and the program. Asks first (without a terminal, use `--yes`). Does not touch your Claude Code history |
 | `hopdeck doctor` | Checks your setup and tells you how to fix whatever is missing |
 | `hopdeck --list` | Lists the projects as plain text |

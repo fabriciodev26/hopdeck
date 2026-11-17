@@ -1,5 +1,10 @@
 # Cambios
 
+## Sin publicar
+
+### Nuevo
+- **La mascota de Hopdeck, un sapo naranja con auriculares.** Sale en la pantalla de inicio (el panel derecho cuando no hay ningún chat abierto), encima del texto y del mayor tamaño que quepa; si el terminal es pequeño o usas `NO_COLOR`, se queda el texto de siempre. También en la pantalla de carga y en el panel de tmux. Y con el comando `hopdeck mascot` (`--size small|normal|large`, `--plain` para dibujarla sin colores). Va dentro del programa, sin archivos de imagen ni Python; en el README hay una imagen (`docs/mascot.png`).
+
 ## 1.4.1
 
 ### Cambiado

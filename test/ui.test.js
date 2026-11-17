@@ -398,6 +398,27 @@ test('tema: t y F9 cambian entre claro y oscuro sin reiniciar, repintan todo y l
   } finally { await h.close(); }
 });
 
+// ───────────── mascota ─────────────
+test('mascota: sale en la pantalla de inicio, sobre el texto, y se quita si el terminal es pequeño', opts, async () => {
+  const root = tmp('hopdeck-ui-mascota-');
+  const fx = makeFixture(root, [alpha()]);
+  const h = launchHub({ root, fx, cwd: fx.cwds.alpha, rows: 40 });
+  try {
+    await h.waitFor(/Elige una conversación/, 'pantalla de inicio');
+    const derecha = () => h.lines().map((l) => l.slice(38)).join('\n'); // el panel derecho
+    const bloques = (derecha().match(/[▀▄]/g) || []).length;
+    assert.ok(bloques > 100, `se dibuja la mascota (${bloques} medios bloques)`);
+    const ls = h.lines(), yTexto = ls.findIndex((l) => l.includes('Elige una conversación')), yArte = ls.findIndex((l, i) => i > 1 && /[▀▄]/.test(l.slice(38)));
+    assert.ok(yArte > 0 && yArte < yTexto, 'la mascota está encima del texto');
+    assert.match(h.screen(), /Usa ↑↓ y ⏎ en el panel izquierdo/, 'y el texto sigue entero');
+  } finally { await h.close(); }
+  const chico = launchHub({ root, fx, cwd: fx.cwds.alpha, rows: 14 });
+  try {
+    await chico.waitFor(/Elige una conversación/, 'pantalla de inicio en un terminal bajo');
+    assert.equal((chico.lines().map((l) => l.slice(38)).join('').match(/[▀▄]/g) || []).length, 0, 'sin sitio para la mascota, solo el texto de siempre');
+  } finally { await chico.close(); }
+});
+
 // ───────────── seleccionar texto del chat ─────────────
 const muchas = Array.from({ length: 80 }, (_, i) => 'linea ' + String(i + 1).padStart(2, '0')).join('\r\n'); // más de lo que cabe en pantalla
 const copiado = (log) => { try { return fs.readFileSync(log, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)); } catch { return []; } };

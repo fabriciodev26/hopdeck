@@ -13,6 +13,7 @@ const readline = require('readline');
 
 const { LANG, T } = require('../lib/i18n');
 const { TRUE, NOCOL, LIGHT, setTheme, isLight, fg, bg, R, C, cw, strW, fit, clean } = require('../lib/style');
+const mascot = require('../lib/mascot');
 const { baseName, tidy, home, shortPath, fold, queryWords, matchWords, fuzzy, wrapText } = require('../lib/text');
 const hist = require('../lib/history');
 const { CONFIG_DIR, CACHE_FILE, textOf, isType, cacheLoad, cacheSave, readSession, decodeDir, projectDirs, buildProject, beginScan, endScan } = hist;
@@ -842,7 +843,10 @@ function idle() {
     const c = process.stdout.columns || 80, r = process.stdout.rows || 24;
     const rows = [[C.brand + C.bold, '» Hop\u0001deck'], [C.text, T.idle1], [C.dim, T.idle2], ['', ''], [C.dim, T.idle3]];
     let out = '\x1b[2J\x1b[?25l';
-    rows.forEach(([st, t], i) => { out += `\x1b[${Math.max(1, Math.floor(r / 2) - 2 + i)};${Math.max(1, Math.floor((c - strW(t.replace('\u0001', ''))) / 2) + 1)}H${st}${paintMark(t)}${R}`; });
+    const art = mascotArt(c, r - rows.length - 2), gap = art.length ? 1 : 0; // el panel de tmux también lleva la mascota, si cabe
+    const top = art.length ? Math.max(1, Math.floor((r - art.length - gap - rows.length) / 2) + 1) : Math.max(1, Math.floor(r / 2) - 2);
+    art.forEach((_, j) => { out += `\x1b[${top + j};1H${mascotRow(art, j, c)}`; });
+    rows.forEach(([st, t], i) => { out += `\x1b[${top + art.length + gap + i};${Math.max(1, Math.floor((c - strW(t.replace('\u0001', ''))) / 2) + 1)}H${st}${paintMark(t)}${R}`; });
     process.stdout.write(out);
   };
   draw(); process.stdout.on('resize', draw);
@@ -1035,10 +1039,28 @@ function termRow(term, y, width, sel, from = 0) {
 /** Texto con la marca en dos colores: \u0001 separa "Hop" (color de marca) de "deck" (color del texto). */
 const paintMark = (t) => t.replace('\u0001', R + C.text + C.bold);
 
+/** La mascota, del mayor tamaño que quepa (en `width` columnas y `rows` filas); nada si no cabe ni la más pequeña o si no hay colores. */
+function mascotArt(width, rows) {
+  if (NOCOL) return [];
+  const n = mascot.sizeFor(width - 2, rows);
+  return n ? mascot.render(n) : [];
+}
+
+/** Una fila de la mascota centrada en `width` columnas. */
+function mascotRow(art, j, width) {
+  const n = art.length * 2, pad = Math.max(0, Math.floor((width - n) / 2));
+  return ' '.repeat(pad) + art[j] + ' '.repeat(Math.max(0, width - pad - n));
+}
+
 function idleRow(y, width, height) {
   const k = T.k;
   const rows = [[C.brand + C.bold, '» Hop\u0001deck'], [C.text, T.idle1], [C.dim, T.idle2], ['', ''], [C.accent, `⏎ ${k.resume}   n ${k.neu}   / ${k.find}   ? ${T.kHelp}`], [C.dim, T.idle3]];
-  const i = y - (Math.floor(height / 2) - 2);
+  const art = mascotArt(width, height - rows.length - 2); // la mascota va encima del texto, si cabe
+  const gap = art.length ? 1 : 0;
+  const start = art.length ? Math.floor((height - art.length - gap - rows.length) / 2) : Math.floor(height / 2) - 2;
+  const j = y - start;
+  if (j >= 0 && j < art.length) return mascotRow(art, j, width);
+  const i = j - art.length - gap;
   if (i < 0 || i >= rows.length) return ' '.repeat(width);
   const [st, t] = rows[i];
   const vis = t.replace('\u0001', ''), pad = Math.max(0, Math.floor((width - strW(vis)) / 2));
@@ -1928,7 +1950,10 @@ function splash(done, total) {
   const lines = [[C.brand + C.bold, '» Hopdeck'], ['', ''],
     [C.dim, `${spin()}  ${T.loading}${total ? `  ${done}/${total}` : '…'}`]];
   let out = '\x1b[2J';
-  lines.forEach(([st, t], i) => { out += `\x1b[${Math.max(1, Math.floor(r / 2) - 1 + i)};${Math.max(1, Math.floor((c - strW(t)) / 2) + 1)}H${st}${t}${R}`; });
+  const art = mascotArt(c, r - lines.length - 2), gap = art.length ? 1 : 0; // la mascota va encima, si cabe
+  const top = art.length ? Math.max(1, Math.floor((r - art.length - gap - lines.length) / 2) + 1) : Math.max(1, Math.floor(r / 2) - 1);
+  art.forEach((_, j) => { out += `\x1b[${top + j};1H${mascotRow(art, j, c)}`; });
+  lines.forEach(([st, t], i) => { out += `\x1b[${top + art.length + gap + i};${Math.max(1, Math.floor((c - strW(t)) / 2) + 1)}H${st}${t}${R}`; });
   process.stdout.write(out);
 }
 
@@ -2253,9 +2278,9 @@ function tutorial(afterInstall) {
 
 // ───────────────────────── entrada ─────────────────────────
 // ── Comandos: UNA sola forma para cada uno (shortcut on|off, uninstall, doctor, help). Lo demás no hace nada: da un error con una sugerencia ──
-const COMMANDS = ['shortcut', 'theme', 'uninstall', 'doctor', 'help'];
+const COMMANDS = ['shortcut', 'theme', 'mascot', 'uninstall', 'doctor', 'help'];
 // Palabras que alguien escribiría para lo mismo: no son comandos y no se ejecutan, solo sirven para sugerir el correcto
-const SYNONYMS = { install: 'shortcut on', instalar: 'shortcut on', atajo: 'shortcut on', desinstalar: 'uninstall', remove: 'uninstall', delete: 'uninstall', ayuda: 'help', diagnostico: 'doctor', version: '--version', list: '--list', tema: 'theme', modo: 'theme', mode: 'theme', dark: 'theme dark', light: 'theme light', oscuro: 'theme dark', claro: 'theme light' };
+const SYNONYMS = { install: 'shortcut on', instalar: 'shortcut on', atajo: 'shortcut on', desinstalar: 'uninstall', remove: 'uninstall', delete: 'uninstall', ayuda: 'help', diagnostico: 'doctor', version: '--version', list: '--list', tema: 'theme', mascota: 'mascot', sapo: 'mascot', frog: 'mascot', modo: 'theme', mode: 'theme', dark: 'theme dark', light: 'theme light', oscuro: 'theme dark', claro: 'theme light' };
 /** Nombre de comando si `arg` es exactamente uno (sin guiones ni variantes); null si no. */
 const commandName = (arg) => (COMMANDS.includes(String(arg || '').toLowerCase()) ? String(arg).toLowerCase() : null);
 const editDistance = (a, b) => { const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]); for (let j = 1; j <= b.length; j++) d[0][j] = j; for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return d[a.length][b.length]; };
@@ -2289,6 +2314,17 @@ function main() {
     const env = !!process.env.HOPDECK_THEME; // lo que se usará la próxima vez que abras Hopdeck
     const eff = env ? (LIGHT ? 'light' : 'dark') : CFG.theme || (/;(7|15)$/.test(process.env.COLORFGBG || '') ? 'light' : 'dark');
     console.log(T.themeShow(CFG.theme || 'auto', eff, CFG.theme ? 'config' : 'auto', env));
+  }
+  else if (commandName(cmd) === 'mascot') { // hopdeck mascot [--size small|normal|large] [--plain]: dibuja la mascota (sin colores con --plain o NO_COLOR)
+    const sizes = { small: 32, normal: 48, large: 64 }; let size = 'normal', plain = false, bad = false;
+    for (let i = 0; i < rest.length; i++) {
+      if (rest[i] === '--plain') plain = true;
+      else if (rest[i] === '--size' && sizes[rest[i + 1]]) size = rest[++i];
+      else bad = true;
+    }
+    if (bad) { console.error(`${C.warn}${T.mascotUsage}${R}`); process.exit(2); }
+    if (plain || NOCOL) console.log(mascot.ASCII);
+    else { const cols = process.stdout.isTTY ? process.stdout.columns || 80 : 999; console.log(mascot.render(Math.max(16, Math.min(sizes[size], cols))).join('\n')); }
   }
   else if (commandName(cmd) === 'uninstall') { // desinstalación completa: atajo, preferencias, caché y programa
     if (rest.some((a) => a !== '--yes' && a !== '-y')) { console.error(`${C.warn}${T.unknownCmd(rest.find((a) => a !== '--yes' && a !== '-y'))}${R}\n${C.dim}${T.cmdList}${R}`); process.exit(2); }

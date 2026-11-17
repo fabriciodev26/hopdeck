@@ -758,6 +758,32 @@ test('línea de comandos: "theme light|dark|auto" guarda el tema; sin argumento 
   assert.equal(luz({}), 'true', 'lo guardado se aplica'); assert.equal(luz({ HOPDECK_THEME: 'dark' }), 'false', 'la variable gana');
 });
 
+test('mascota: se dibuja a cualquier tamaño con medios bloques, deja transparente el fondo, y "hopdeck mascot" la imprime', () => {
+  const m = require('../lib/mascot');
+  for (const n of [16, 24, 32, 48, 64]) {
+    const rows = m.render(n);
+    assert.equal(rows.length, n / 2, `${n}: la mitad de filas que de columnas (dos píxeles por celda)`);
+    assert.ok(rows.every((r) => hd.strW(r.replace(/\x1b\[[0-9;]*m/g, '')) === n), `${n}: todas las filas miden lo mismo`);
+    const visible = rows.join('').replace(/\x1b\[[0-9;]*m/g, '');
+    assert.ok(/[▀▄]/.test(visible), `${n}: tiene dibujo`);
+    assert.ok(rows[0].startsWith(' ') && rows[rows.length - 1].startsWith(' '), `${n}: las esquinas son transparentes (no pintan fondo)`);
+  }
+  assert.equal(m.render(32), m.render(32), 'se guarda en memoria');
+  assert.equal(m.sizeFor(60, 30), 48); assert.equal(m.sizeFor(30, 12), 24); assert.equal(m.sizeFor(40, 8), 16); assert.equal(m.sizeFor(10, 10), 0, 'si no cabe, nada');
+  assert.ok(m.ASCII.includes('(o)') && !m.ASCII.includes('\x1b'), 'la versión sin colores es texto plano');
+
+  const { run, env } = cli(), color = (...a) => require('child_process').spawnSync(process.execPath, [path.join(__dirname, '..', 'bin', 'hopdeck.js'), ...a], { env: { ...env, NO_COLOR: '', COLORTERM: 'truecolor' }, encoding: 'utf8', timeout: 30000 });
+  const lineas = (x) => x.stdout.split('\n').length - 1; // sin recortar: las últimas filas son solo transparencia
+  let r = color('mascot'); assert.equal(r.status, 0);
+  assert.equal(lineas(r), 24, 'tamaño normal: 48 columnas, 24 filas'); assert.match(r.stdout, /\x1b\[38;2;\d+;\d+;\d+m/, 'con colores de 24 bits');
+  assert.equal(lineas(color('mascot', '--size', 'small')), 16);
+  assert.equal(lineas(color('mascot', '--size', 'large')), 32);
+  r = color('mascot', '--plain'); assert.equal(r.stdout.trimEnd(), m.ASCII); assert.doesNotMatch(r.stdout, /\x1b/);
+  r = run('mascot'); assert.equal(r.stdout.trimEnd(), m.ASCII, 'con NO_COLOR sale la versión sin colores');
+  for (const mal of [['--size'], ['--size', 'enorme'], ['--otra']]) { r = run('mascot', ...mal); assert.equal(r.status, 2, mal.join(' ')); assert.match(r.stderr, /Uso: hopdeck mascot/); }
+  r = run('sapo'); assert.equal(r.status, 2); assert.ok(r.stderr.includes('¿Quisiste decir "mascot"?'));
+});
+
 test('línea de comandos: "shortcut on|off" solo toca el atajo; cualquier otra forma da error con sugerencia y no hace nada', () => {
   const { perfil, cfg, run, conBloque } = cli();
   assert.equal(run('shortcut', 'on').status, 0); assert.ok(conBloque(), 'shortcut on instala el atajo');

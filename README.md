@@ -5,6 +5,8 @@
   </picture>
 </p>
 
+<p align="center"><img alt="La mascota de Hopdeck: un sapo naranja con auriculares" src="docs/mascot.png" width="130"></p>
+
 <p align="center"><b>Salta entre tus proyectos y conversaciones de Claude Code, sin salir de la terminal.</b></p>
 
 **Español** · [English](README.en.md)
@@ -192,6 +194,7 @@ Se refresca solo cada pocos segundos y no modifica nada en el repositorio. Neces
 | `hopdeck` | Abre Hopdeck |
 | `hopdeck shortcut on` / `hopdeck shortcut off` | Instala o quita el atajo para que `claude` abra Hopdeck |
 | `hopdeck theme light` / `dark` / `auto` | Cambia el tema de colores y lo guarda (`hopdeck theme` muestra el actual) |
+| `hopdeck mascot` | Dibuja la mascota en el terminal (`--size small\|normal\|large`; `--plain` la dibuja sin colores). También sale en la pantalla de inicio de Hopdeck |
 | `hopdeck uninstall` | **Desinstala Hopdeck por completo**: el atajo, tus preferencias y la caché, y el programa. Pregunta antes (sin terminal, usa `--yes`). No toca tu historial de Claude Code |
 | `hopdeck doctor` | Revisa tu instalación y dice cómo arreglar lo que falte |
 | `hopdeck --list` | Lista los proyectos en texto plano |
