@@ -217,6 +217,7 @@ Casi nunca hace falta tocar nada. Lo más útil:
 | `HOPDECK_LANG` | `es` o `en` (por defecto, el idioma del sistema) |
 | `HOPDECK_THEME` | `light` o `dark`: manda sobre lo guardado con `hopdeck theme` |
 | `HOPDECK_SIXEL` | `1` fuerza la imagen real al pasar el cursor por `[Image #N]`, `0` usa siempre bloques (por defecto se detecta) |
+| `HOPDECK_BUSY` | `output` marca un chat como «trabajando» con cualquier salida reciente. Por defecto solo cuando Claude muestra «esc to interrupt» |
 | `NO_COLOR` | Quita los colores |
 | `CLAUDE_CONFIG_DIR` | Carpeta de Claude Code, si no es `~/.claude` |
 | `HOPDECK_SKIP=1` | Salta Hopdeck una vez: `HOPDECK_SKIP=1 claude` |

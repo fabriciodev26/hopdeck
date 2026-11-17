@@ -398,6 +398,43 @@ test('tema: t y F9 cambian entre claro y oscuro sin reiniciar, repintan todo y l
   } finally { await h.close(); }
 });
 
+// ───────────── indicador «trabajando» (el spinner de la lista) ─────────────
+const SPIN = /[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/;
+const listaIzq = (h) => h.lines().map((l) => l.slice(0, 36)).join('\n'); // la lista ocupa las primeras columnas
+
+test('indicador de trabajo: un chat que solo repinta (sin «esc to interrupt») no aparece como trabajando', opts, async () => {
+  const root = tmp('hopdeck-ui-noise-');
+  const fx = makeFixture(root, [alpha()]);
+  const h = launchHub({ root, fx, cwd: fx.cwds.alpha, env: { FAKE_NOISE: '1' } });
+  try {
+    await h.waitFor(/Sesión dos/, 'lista');
+    const uno = h.find('Sesión uno'); h.mouse(0, 5, uno.y); h.mouse(0, 5, uno.y, 'm'); // abre el chat
+    await h.waitFor(/FAKE CLAUDE/, 'chat abierto');
+    h.write('\x1bOP'); await h.sleep(2500);                                          // F1: foco en la lista; el chat escribe cada 300 ms
+    for (let i = 0; i < 6; i++) { assert.doesNotMatch(listaIzq(h), SPIN, 'sin spinner en la lista'); await h.sleep(250); }
+    assert.match(listaIzq(h), /●/, 'solo la marca de chat abierto');
+  } finally { await h.close(); }
+});
+
+test('indicador de trabajo: mientras el chat muestra «esc to interrupt» sale el spinner, y al terminar vuelve la marca', opts, async () => {
+  const root = tmp('hopdeck-ui-busy-');
+  const fx = makeFixture(root, [alpha()]);
+  const h = launchHub({ root, fx, cwd: fx.cwds.alpha, env: { FAKE_BUSY: '1' } });
+  try {
+    await h.waitFor(/Sesión dos/, 'lista');
+    const uno = h.find('Sesión uno'); h.mouse(0, 5, uno.y); h.mouse(0, 5, uno.y, 'm');
+    await h.waitFor(/FAKE CLAUDE/, 'chat abierto');
+    h.write('\x1bOP');
+    let visto = false; const t0 = Date.now();
+    while (Date.now() - t0 < 3500 && !visto) { visto = SPIN.test(listaIzq(h)); if (!visto) await h.sleep(100); }
+    assert.ok(visto, 'el spinner aparece mientras trabaja');
+    await h.waitFor(/listo/, 'termina de generar', 8000);
+    const t1 = Date.now(); let aun = true;
+    while (Date.now() - t1 < 5000 && aun) { aun = SPIN.test(listaIzq(h)); if (aun) await h.sleep(100); }
+    assert.ok(!aun, 'el spinner se apaga al terminar');
+  } finally { await h.close(); }
+});
+
 // ───────────── búsqueda dentro del contenido (Tab) ─────────────
 test('búsqueda en el contenido: si ningún título coincide, se busca sola dentro de las conversaciones (y Tab la fuerza)', opts, async () => {
   const root = tmp('hopdeck-ui-deep-');

@@ -1,5 +1,10 @@
 # Cambios
 
+## Sin publicar
+
+### Arreglado
+- **El spinner de «trabajando» salía sin que Claude estuviera haciendo nada**, a veces en chats donde ni estabas. Hopdeck marcaba un chat como trabajando si escribía cualquier cosa en el último segundo, y eso también ocurre al mover o redimensionar los paneles (todos los chats se repintan), al cambiar de ventana o al actualizarse la barra de estado. Ahora solo cuenta como trabajando cuando la pantalla de Claude muestra «esc to interrupt», y el repintado justo después de redimensionar se ignora. Si una versión de Claude cambiara ese texto, `HOPDECK_BUSY=output` devuelve el criterio anterior.
+
 ## 1.4.0
 
 ### Nuevo

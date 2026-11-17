@@ -1443,13 +1443,13 @@ function embedLaunch(project, session) {
       { name: 'xterm-256color', cols: rw, rows: th, cwd: project.cwd, env });
   } catch (e) { flash(String(e.message).split('\n')[0]); return; }
   const term = new Terminal({ cols: rw, rows: th, allowProposedApi: true, scrollback: 2000 });
-  const sess = { p, term, cursorHidden: false, ready: false, lastData: Date.now(), working: false, busy: false, unseen: false, title: session ? session.title : T.newChat, t0: Date.now(), project: project.name, cwd: project.cwd, sid: session ? session.id : null, closing: false, branch: gitBranch(project.cwd) };
+  const sess = { p, term, cursorHidden: false, ready: false, lastData: Date.now(), quietUntil: 0, working: false, busy: false, unseen: false, title: session ? session.title : T.newChat, t0: Date.now(), project: project.name, cwd: project.cwd, sid: session ? session.id : null, closing: false, branch: gitBranch(project.cwd) };
   const vis = (hidden) => (params) => { if (params.some((x) => x === 25 || (Array.isArray(x) && x.includes(25)))) sess.cursorHidden = hidden; return false; };
   term.parser.registerCsiHandler({ prefix: '?', final: 'h' }, vis(false));
   term.parser.registerCsiHandler({ prefix: '?', final: 'l' }, vis(true));
   term.onData((d) => { try { p.write(d); } catch { /* cerrado */ } }); // respuestas a consultas del terminal
   p.onData((d) => {
-    sess.lastData = Date.now();
+    if (Date.now() >= sess.quietUntil) sess.lastData = Date.now(); // lo que Claude repinta justo tras redimensionar no es trabajo
     // "listo" = ya hay texto visible. En Windows ConPTY manda secuencias de control al arrancar, antes de que Claude dibuje nada.
     term.write(d, () => { if (!sess.ready && hasContent(term)) sess.ready = true; if (E.shown === key) scheduleRender(); });
   });
@@ -1677,10 +1677,26 @@ function closeChat(key) {
   flash(T.closed(x.title));
 }
 
+/**
+ * ¿Claude Code está trabajando de verdad? Mientras genera, su pantalla muestra «esc to interrupt» (o «ctrl+c to interrupt»).
+ * Antes bastaba con que el chat escribiera algo en el último segundo, y eso también pasa sin trabajo: al redimensionar los
+ * paneles, al cambiar de ventana, o al actualizar su barra de estado. Se mira solo la pantalla viva (no lo que se ve al subir).
+ */
+const BUSY_HINT = /(esc|ctrl\+c) to interrupt/i;
+function showsBusy(term) {
+  const b = term.buffer.active;
+  for (let y = Math.max(0, term.rows - 14); y < term.rows; y++) {
+    const l = b.getLine(b.baseY + y);
+    if (l && BUSY_HINT.test(l.translateToString(true))) return true;
+  }
+  return false;
+}
+
 function pollChats() {
   const now = Date.now(); let changed = false;
   for (const [key, x] of E.sessions) {
-    const working = x.ready && now - x.lastData < 1200;
+    // HOPDECK_BUSY=output devuelve el criterio antiguo (cualquier salida reciente) por si una versión de Claude cambia ese texto
+    const working = x.ready && now - x.lastData < 1200 && (process.env.HOPDECK_BUSY === 'output' || showsBusy(x.term));
     if (x.working && !working && x.busy) {
       x.busy = false;
       if (E.shown !== key || E.focus !== 'right') { x.unseen = true; E.note = { t: '✔ ' + x.project + ' › ' + x.title, until: now + 6000 }; process.stdout.write('\x07'); notifyDesktop(x.project + ' › ' + x.title); }
@@ -1696,7 +1712,7 @@ const x_any = (e) => [...e.sessions.values()].some((x) => x.working);
 function embedResize() {
   invalidate(); E.sel = null;
   const { rw, th } = embedLayout();
-  for (const sess of E.sessions.values()) { try { sess.p.resize(rw, th); sess.term.resize(rw, th); } catch { /* */ } }
+  for (const sess of E.sessions.values()) { sess.quietUntil = Date.now() + 1500; try { sess.p.resize(rw, th); sess.term.resize(rw, th); } catch { /* */ } } // todos los chats se repintan al cambiar el tamaño
   render();
 }
 

@@ -16,6 +16,13 @@ process.stdin.on('data', (d) => {
 });
 
 if (process.env.FAKE_PRINT) process.stdout.write('\r\n' + process.env.FAKE_PRINT + '\r\n> ');
+// FAKE_NOISE: escribe algo cada 300 ms sin estar trabajando (como una barra de estado que se actualiza).
+if (process.env.FAKE_NOISE) setInterval(() => process.stdout.write('\x1b7\x1b[1;1Hreloj ' + Date.now() % 100000 + '\x1b8'), 300);
+// FAKE_BUSY: durante 4 s muestra «esc to interrupt» y escribe sin parar, como Claude generando una respuesta.
+if (process.env.FAKE_BUSY) {
+  const t = setInterval(() => process.stdout.write('\r\n✻ Pensando… (esc to interrupt) ' + Date.now() % 1000), 300);
+  setTimeout(() => { clearInterval(t); process.stdout.write('\x1b[2J\x1b[Hlisto\r\n> '); }, 4000);
+}
 if (mode === 'mouse' || mode === 'alt') { // entrada cruda: responde a la rueda y a las flechas
   try { process.stdin.setRawMode(true); } catch { /* sin TTY */ }
   const say = (x) => process.stdout.write('\r\n' + x + '\r\n');
