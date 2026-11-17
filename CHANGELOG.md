@@ -1,5 +1,10 @@
 # Cambios
 
+## Sin publicar
+
+### Nuevo
+- **Ancho de los paneles con el ratón.** Agarra con el cursor la línea `│` que separa la lista del chat, o el chat del panel de git, y arrástrala a izquierda o derecha. Cada panel puede medir entre el 15 % y el 50 % del ancho del terminal (nunca menos de 20 columnas), el chat siempre conserva su ancho mínimo y el ancho se recuerda para la próxima vez. Solo en el terminal integrado (en tmux, arrastra el borde del panel como siempre).
+
 ## 1.3.1
 
 ### Nuevo

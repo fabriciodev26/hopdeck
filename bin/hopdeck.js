@@ -541,7 +541,8 @@ function doRename(x, name) {
 
 function adjustSidebar(d) {
   const cur = EMBED ? embedLayout().SW || 36 : process.stdout.columns || 40;
-  CFG.sidebar = clamp(cur + d, 24, 80); saveCfg();
+  const lim = EMBED ? panelLimits(process.stdout.columns || 100) : { min: 24, max: 80 };
+  CFG.sidebar = clamp(cur + d, lim.min, lim.max); saveCfg();
   if (EMBED) return embedResize();
   if (SIDEBAR) { try { tmux('resize-pane', '-t', process.env.TMUX_PANE, '-x', String(CFG.sidebar)); } catch { /* */ } render(); }
 }
@@ -852,12 +853,40 @@ function loadDeps() {
   try { return { pty: require('@lydell/node-pty'), Terminal: require('@xterm/headless').Terminal }; } catch { return null; }
 }
 
+/** Límites de un panel lateral al arrastrar su borde con el ratón: del 15 % al 50 % del ancho (y nunca menos de 20 columnas). */
+const panelLimits = (W) => ({ min: Math.min(Math.max(20, Math.round(W * 0.15)), Math.floor(W * 0.5)), max: Math.max(20, Math.floor(W * 0.5)) });
+/** Ancho de la lista (panel izquierdo): el guardado por el usuario, o 30 % del terminal por defecto. */
+const sideWidth = (W) => (E.hideSide ? 0 : CFG.sidebar ? clamp(CFG.sidebar, panelLimits(W).min, panelLimits(W).max) : clamp(Math.floor(W * 0.3), 36, 46));
+/** Ancho del panel de git (derecho): el guardado por el usuario, o GIT_W por defecto. */
+const gitWidth = (W) => (CFG.gitw ? clamp(CFG.gitw, panelLimits(W).min, panelLimits(W).max) : GIT_W);
+
 function embedLayout() {
   const W = process.stdout.columns || 100, H = process.stdout.rows || 30;
-  const SW = E.hideSide ? 0 : CFG.sidebar ? clamp(CFG.sidebar, 24, 80) : clamp(Math.floor(W * 0.3), 36, 46);
+  const SW = sideWidth(W);
   const room = Math.max(10, W - SW - (SW ? 1 : 0));
-  const GW = E.git && room - GIT_W - 1 >= GIT_MIN_CHAT ? GIT_W : 0; // tercer panel (git): solo si el chat conserva un ancho cómodo
+  const gw = gitWidth(W);
+  const GW = E.git && room - gw - 1 >= GIT_MIN_CHAT ? gw : 0; // tercer panel (git): solo si el chat conserva un ancho cómodo
   return { W, H, SW, GW, rw: GW ? room - GW - 1 : room, rh: Math.max(3, H - 1), th: Math.max(3, H - 3) };
+}
+
+/**
+ * Arrastre de una línea divisoria: `x` es la columna (desde 1) donde está el ratón. La lista ocupa las columnas anteriores
+ * a la línea y el panel de git las posteriores. El chat conserva siempre su ancho mínimo, así el panel de git no desaparece.
+ */
+function dragPanel(which, x) {
+  const { W, SW, GW } = embedLayout(), l = panelLimits(W);
+  if (which === 'side') {
+    const hi = Math.max(l.min, Math.min(l.max, W - 1 - (GW ? GW + 1 + GIT_MIN_CHAT : 40)));
+    const n = clamp(x - 1, l.min, hi);
+    if (n === SW) return;
+    CFG.sidebar = n;
+  } else {
+    const hi = Math.max(l.min, Math.min(l.max, W - (SW ? SW + 1 : 0) - 1 - GIT_MIN_CHAT));
+    const n = clamp(W - x, l.min, hi);
+    if (n === GW) return;
+    CFG.gitw = n;
+  }
+  embedResize();
 }
 
 // ───────────────────────── panel de git (tercer panel, F8) ─────────────────────────
@@ -880,8 +909,8 @@ const gitCwd = () => {
 function toggleGit() {
   if (!EMBED) return flash(T.gitOnlyEmbed);
   if (!E.git) {
-    const SW = E.hideSide ? 0 : CFG.sidebar ? clamp(CFG.sidebar, 24, 80) : clamp(Math.floor((process.stdout.columns || 100) * 0.3), 36, 46);
-    const need = SW + (SW ? 1 : 0) + GIT_MIN_CHAT + GIT_W + 1;
+    const W = process.stdout.columns || 100, SW = sideWidth(W);
+    const need = SW + (SW ? 1 : 0) + GIT_MIN_CHAT + gitWidth(W) + 1;
     if ((process.stdout.columns || 100) < need) return flash(T.gitNarrow(need));
   }
   E.git = !E.git; CFG.git = E.git; saveCfg();
@@ -1312,7 +1341,8 @@ function renderEmbed() {
   const popRow = (ty) => (pop && ty >= pop.top && ty < pop.top + pop.rows.length
     ? termRow(sh.term, ty, pop.left, selRange(ty, rw)) + pop.rows[ty - pop.top] + termRow(sh.term, ty, rw - pop.left - pop.bw, selRange(ty, rw), pop.left + pop.bw)
     : null);
-  const div = (E.focus === 'right' ? C.accent : C.faint) + '│' + R;
+  const div = (E.drag === 'side' || E.focus === 'right' ? C.accent : C.faint) + '│' + R;
+  const gdiv = (E.drag === 'git' ? C.accent : C.faint) + '│' + R; // la línea que se está arrastrando se resalta
   const gitR = GW ? gitRows(GW, rh) : null;
   for (let y = 0; y < rh; y++) {
     const ty = y - 2; // las 2 primeras filas del panel derecho son el título y su línea
@@ -1322,7 +1352,7 @@ function renderEmbed() {
         : y === 1 ? C.faint + '─'.repeat(rw) + R : gRows[ty])
       : y === 0 ? headerRow(hdr, rw) : y === 1 ? C.faint + '─'.repeat(rw) + R
       : sh && sh.ready ? (popRow(ty) || termRow(sh.term, ty, rw, selRange(ty, rw))) : sh ? loaderRow(ty, rw, th, sh.title) : pvRows ? pvRows[ty] : idleRow(ty, rw, th);
-    rowsOut.push((left ? (left[y] || ' '.repeat(SW)) + div : '') + right + (gitR ? C.faint + '│' + R + gitR[y] : ''));
+    rowsOut.push((left ? (left[y] || ' '.repeat(SW)) + div : '') + right + (gitR ? gdiv + gitR[y] : ''));
   }
   const live = E.sessions.size;
   const k = (key, d) => [[key, C.accent], [' ' + d + '   ', C.dim]];
@@ -1481,6 +1511,15 @@ function onMouse(b, x, y, type) {
   if (E.gallery) return;
   const { SW, GW, rw, rh } = embedLayout();
   const sh = E.sessions.get(E.shown);
+  // líneas divisorias arrastrables (columna de cada '│'): lista|chat y chat|git
+  const sx = SW ? SW + 1 : 0, gx = GW ? sx + rw + 1 : 0;
+  if (E.drag) {
+    if (type === 'm') { E.drag = null; saveCfg(); return render(); }
+    if ((b & 32) && (b & 3) === 0) return dragPanel(E.drag, x);
+  } else if (type === 'M' && !(b & 96) && (b & 3) === 0 && y <= rh && ((SW && x === sx) || (GW && x === gx))) {
+    E.drag = x === sx ? 'side' : 'git'; E.sel = null; E.hover = null;
+    return render();
+  }
   if (GW && x > (SW ? SW + 1 : 0) + rw) { if (E.hover) { E.hover = null; scheduleRender(); } return; } // el panel de git es de solo lectura
   if (b & 64) { // rueda
     E.hover = null;
@@ -2184,6 +2223,6 @@ else {
     readSession, buildProject, scan, scanAsync, finishScan, sortProjects, projectDirs,
     view, flatList, stripBlock, offerShortcut, uninstallAll, commandName, suggestCommand, parseTermReplies, sixelOn, SNIP, MARK_A, MARK_B, toggleProject, cacheLoad, selNorm,
     decodePNG, decodeImage, scaleBox, fitSize, halfBlocks, collectImages, extractImages,
-    editBuf, normalizeKeys, stripJsonc, wtCtrlV, fbNames, fbOpen, fbRows, sidebarMouse, toggleTheme, gitBranch, imageMarkerAt, shownSession, linkChats, findImageByNumber: images.findImageByNumber,
+    onMouse, dragPanel, panelLimits, embedLayout, editBuf, normalizeKeys, stripJsonc, wtCtrlV, fbNames, fbOpen, fbRows, sidebarMouse, toggleTheme, gitBranch, imageMarkerAt, shownSession, linkChats, findImageByNumber: images.findImageByNumber,
   };
 }

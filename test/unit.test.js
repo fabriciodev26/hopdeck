@@ -485,6 +485,44 @@ test('sidebarMouse: la rueda mueve la selección y un clic despliega el proyecto
   } finally { Object.assign(hd.S, saved); }
 });
 
+test('arrastrar las líneas divisorias cambia el ancho de la lista y del panel de git, con límites', () => {
+  const cols = Object.getOwnPropertyDescriptor(process.stdout, 'columns'), rows = Object.getOwnPropertyDescriptor(process.stdout, 'rows');
+  const saved = { sidebar: hd.CFG.sidebar, gitw: hd.CFG.gitw, git: hd.E.git, hide: hd.E.hideSide, gallery: hd.E.gallery };
+  Object.defineProperty(process.stdout, 'columns', { value: 160, configurable: true });
+  Object.defineProperty(process.stdout, 'rows', { value: 40, configurable: true });
+  try {
+    Object.assign(hd.E, { git: true, hideSide: false, gallery: null }); hd.CFG.sidebar = 0; hd.CFG.gitw = 0;
+    silenciar(() => {
+      const lim = hd.panelLimits(160);
+      assert.deepEqual(lim, { min: 24, max: 80 }, '15 % y 50 % de 160 columnas');
+      assert.deepEqual(hd.panelLimits(100), { min: 20, max: 50 }, 'piso de 20 columnas');
+      let L = hd.embedLayout();
+      assert.equal(L.GW, 38, 'git por defecto');
+      // lista: la línea está en la columna SW+1; arrastrarla a la 61 deja 60 columnas
+      hd.onMouse(0, L.SW + 1, 5, 'M');
+      assert.equal(hd.E.drag, 'side', 'pulsar sobre la línea empieza el arrastre');
+      hd.onMouse(32, 41, 5, 'M'); assert.equal(hd.embedLayout().SW, 40, 'sigue al ratón');
+      hd.onMouse(32, 3, 5, 'M'); assert.equal(hd.embedLayout().SW, lim.min, 'mínimo');
+      hd.onMouse(32, 150, 5, 'M'); assert.ok(hd.embedLayout().SW <= lim.max && hd.embedLayout().GW === 38, 'máximo; el git no desaparece');
+      hd.onMouse(0, 30, 5, 'm'); assert.equal(hd.E.drag, null, 'soltar termina el arrastre');
+      assert.equal(hd.CFG.sidebar, hd.embedLayout().SW, 'el ancho se recuerda');
+      // git: la línea está en SW+rw+2; arrastrarla hacia la izquierda ensancha el panel
+      hd.CFG.sidebar = 40; L = hd.embedLayout();
+      const gx = L.SW + 1 + L.rw + 1;
+      hd.onMouse(0, gx, 5, 'M'); assert.equal(hd.E.drag, 'git');
+      hd.onMouse(32, 160 - 50, 5, 'M'); assert.equal(hd.embedLayout().GW, 50, 'ancho 50');
+      hd.onMouse(32, 159, 5, 'M'); assert.equal(hd.embedLayout().GW, lim.min, 'mínimo');
+      hd.onMouse(32, 1, 5, 'M'); assert.ok(hd.embedLayout().GW > 0 && hd.embedLayout().rw >= 60, 'el chat conserva su mínimo');
+      hd.onMouse(0, 10, 5, 'm');
+      hd.onMouse(0, 20, 5, 'M'); assert.equal(hd.E.drag, null, 'pulsar fuera de una línea no arrastra');
+    });
+  } finally {
+    Object.assign(hd.E, { git: saved.git, hideSide: saved.hide, gallery: saved.gallery, drag: null }); hd.CFG.sidebar = saved.sidebar; hd.CFG.gitw = saved.gitw;
+    if (cols) Object.defineProperty(process.stdout, 'columns', cols); else delete process.stdout.columns;
+    if (rows) Object.defineProperty(process.stdout, 'rows', rows); else delete process.stdout.rows;
+  }
+});
+
 test('sidebarMouse: en el selector de carpetas un clic entra en la carpeta', () => {
   const d = tmp('hopdeck-fbm-'); fs.mkdirSync(path.join(d, 'carpeta-a'));
   const saved = { ...hd.S };
