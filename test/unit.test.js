@@ -182,6 +182,27 @@ test('PNG: decodifica con los 5 filtros (RGBA y RGB)', () => {
   assert.equal(hd.decodeImage({ data: Buffer.from('basura').toString('base64') }), null);
 });
 
+test('imágenes en macOS: lo que el decodificador propio no entiende se convierte con sips', () => {
+  const imgs = require('../lib/images');
+  assert.equal(imgs.sniffExt(Buffer.from('RIFF\x00\x00\x00\x00WEBPVP8 ', 'latin1')), 'webp');
+  assert.equal(imgs.sniffExt(Buffer.from('GIF89a..........', 'latin1')), 'gif');
+  assert.equal(imgs.sniffExt(Buffer.from('\x00\x00\x00\x18ftypheic....', 'latin1')), 'heic');
+  const webp = Buffer.from('RIFF\x00\x00\x00\x00WEBPVP8 ', 'latin1');
+  const llamadas = [];
+  const falso = (cmd, args) => { // hace de sips: deja un PNG de 3×2 donde se le pide
+    llamadas.push([cmd, args]);
+    fs.writeFileSync(args[args.indexOf('--out') + 1], makePNG(3, 2, () => [10, 20, 30, 255]));
+    return { status: 0 };
+  };
+  const d = imgs.decodeViaSips(webp, falso);
+  assert.deepEqual([d.w, d.h], [3, 2], 'devuelve la imagen convertida');
+  assert.equal(llamadas[0][0], 'sips');
+  assert.ok(llamadas[0][1].includes('-Z') && /in\.webp$/.test(llamadas[0][1][llamadas[0][1].indexOf('-Z') + 2]), 'reduce y conserva la extensión del original');
+  assert.ok(!fs.existsSync(path.dirname(llamadas[0][1][llamadas[0][1].indexOf('--out') + 1])), 'borra los archivos temporales');
+  assert.equal(imgs.decodeViaSips(webp, () => ({ status: 1 })), null, 'si sips falla, no hay imagen');
+  assert.equal(imgs.decodeViaSips(webp, () => { throw new Error('no existe'); }), null, 'si no existe sips, tampoco');
+});
+
 test('imágenes: reducir, componer sobre fondo y dibujar con medios bloques', () => {
   const red = new Uint8Array(4 * 2 * 4); for (let i = 0; i < 8; i++) red.set([255, 0, 0, 255], i * 4);
   const out = hd.scaleBox(red, 4, 2, 2, 1);

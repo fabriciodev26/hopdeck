@@ -1166,7 +1166,7 @@ function hoverPopup(hv, rw, th) {
     if (!hb) { hb = halfBlocks(scaleBox(d.rgba, d.w, d.h, sz.tw, sz.th), sz.tw, sz.th); g.cache.clear(); g.cache.set(key, hb); }
     rows = hb; tw = sz.tw;
   } else {
-    const txt = d === undefined ? spin() + ' …' : T.imgNoPrev;
+    const txt = d === undefined ? spin() + ' …' : `${T.imgNoPrev} (${img.media || '?'})`; // el formato ayuda a saber por qué no se pudo leer
     tw = Math.max(strW(lab) + 1, Math.min(strW(txt) + 2, Math.max(8, rw - 4)));
     rows = [fit([[' ' + txt, d === false ? C.warn : C.accent]], tw)];
   }
