@@ -1,6 +1,6 @@
 # Cambios
 
-## Sin publicar
+## 1.4.2
 
 ### Nuevo
 - **Estadísticas de cada conversación en la fila del título**, a la derecha: `MSGS 2324 │ TOK 206.9M │ TOOLS 1249 │ opus`. Mensajes, tokens (entrada, salida y caché de cada mensaje de Claude), herramientas usadas y modelo; la rama de git sigue a la izquierda, junto al título. Salen en la vista previa al pasar el cursor y con el chat abierto. Si el panel es estrecho se quitan primero los campos menos importantes (TOOLS, luego el modelo). Se calculan en segundo plano (una conversación de 79 MB tarda unos 250 ms) y después solo se lee lo que Claude añade, como mucho cada 3 s.
