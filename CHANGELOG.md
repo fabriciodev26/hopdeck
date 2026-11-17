@@ -1,6 +1,6 @@
 # Cambios
 
-## Sin publicar
+## 1.4.1
 
 ### Cambiado
 - **Seleccionar texto del chat ya no lo copia solo.** Al soltar, la selección se queda marcada y se copia con `Ctrl+C` o con el clic derecho; `Esc` o un clic en otro sitio la quitan (`Esc` no llega a Claude mientras hay algo seleccionado, porque lo interrumpiría). Quien prefiera el comportamiento anterior puede poner `"copyOnSelect": true` en `~/.hopdeck.json`.
