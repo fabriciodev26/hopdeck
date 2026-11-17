@@ -94,6 +94,29 @@ test('proyectos: cwd, orden por reciente y marca de duplicadas', () => {
   assert.equal(beta.name, 'beta');
 });
 
+test('continuaciones: las sesiones que copian el mismo historial son una sola conversación (gana la del mensaje más reciente)', () => {
+  const d = tmp('hopdeck-cont-');
+  const msg = (type, uuid, parent, ts, text) => JSON.stringify({ type, uuid, parentUuid: parent, cwd: '/proy', timestamp: ts, message: { role: type, content: text } });
+  const w = (id, lines) => fs.writeFileSync(path.join(d, id + '.jsonl'), lines.join('\n') + '\n');
+  const base = [msg('user', 'r1', null, '2026-01-01T10:00:00Z', 'Vistas disponibles'), msg('assistant', 'r2', 'r1', '2026-01-01T10:01:00Z', 'ok')];
+  w('vieja', base);
+  w('media', [...base, msg('user', 'r3', 'r2', '2026-01-02T10:00:00Z', 'seguimos')]);
+  w('nueva', [...base, msg('user', 'r3', 'r2', '2026-01-02T10:00:00Z', 'seguimos'), msg('assistant', 'r4', 'r3', '2026-01-03T10:00:00Z', 'listo')]);
+  // otras dos conversaciones distintas con el mismo primer mensaje (no comparten ningún uuid): siguen apareciendo, con su #id
+  w('otra1', [msg('user', 'x1', null, '2026-01-01T09:00:00Z', 'hola mundo')]);
+  w('otra2', [msg('user', 'y1', null, '2026-01-01T09:30:00Z', 'hola mundo')]);
+  // abrir la conversación vieja modifica su archivo (queda como la más reciente por fecha), pero no tiene mensajes nuevos
+  const ahora = new Date(); fs.utimesSync(path.join(d, 'vieja.jsonl'), ahora, ahora);
+  const p = hd.buildProject(d), ids = p.sessions.map((s) => s.id).sort();
+  assert.deepEqual(ids, ['nueva', 'otra1', 'otra2'], 'vieja y media se pliegan en nueva');
+  const nueva = p.sessions.find((s) => s.id === 'nueva');
+  assert.equal(nueva.parts, 2); assert.deepEqual(nueva.prior.sort(), ['media', 'vieja']);
+  assert.ok(p.sessions.filter((s) => s.id.startsWith('otra')).every((s) => s.dup && !s.parts), 'las distintas siguen marcadas con #id');
+  assert.ok(!nueva.dup);
+  assert.equal(hd.sessTag(nueva), '↻2');
+  assert.equal(hd.sessTag(p.sessions.find((s) => s.id === 'otra1')), '#otra');
+});
+
 test('caché: se escribe y detecta cambios (renombrar = añadir custom-title)', () => {
   assert.ok(fs.existsSync(process.env.HOPDECK_CACHE));
   const before = Object.keys(JSON.parse(fs.readFileSync(process.env.HOPDECK_CACHE, 'utf8')).files).length;

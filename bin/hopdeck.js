@@ -154,6 +154,9 @@ async function reloadAsync(after, silent) {
 
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
+/** Marca junto a una conversación: ↻N = es la misma conversación continuada N veces (se muestra solo la última); #xxxx = otra distinta con el mismo título. */
+const sessTag = (s) => (s.parts ? '↻' + s.parts : s.dup ? '#' + s.id.slice(0, 4) : '');
+
 function view() {
   const q = S.query.trim().toLowerCase();
   const base = S.projects.filter((p) => S.showHidden || !p.hidden);
@@ -260,7 +263,7 @@ function frame(cols, rows) {
           const tw = rw - 2 - when.length - 2;
           right = fit([[mark, C.accent], [e.title, sel ? C.text + C.bold : C.text],
             [e.first && e.first !== e.title ? '  ' + e.first : '', C.dim],
-            [e.dup ? '  #' + e.id.slice(0, 4) : '', C.accent]], tw + 2, base) +
+            [sessTag(e) ? '  ' + sessTag(e) : '', C.accent]], tw + 2, base) +
             fit([['  ' + when, C.dim]], rw - tw - 2, base);
         }
       } else right = ' '.repeat(rw);
@@ -426,7 +429,7 @@ function frameTree(W, H) {
       lines.push(fit([mark, ['    ＋ ', C.accent], [T.newChat, sel ? C.accent + C.bold : C.accent]], W, base));
     } else {
       const [mk, mc] = chatMark(e.s.id);
-      const arch = CFG.archived.includes(e.s.id), tag = e.s.dup ? '#' + e.s.id.slice(0, 4) : '';
+      const arch = CFG.archived.includes(e.s.id), tag = sessTag(e.s);
       const ts = sel ? C.text + C.bold : arch ? C.dim : C.text, inTxt = sq0 && !e.s.title.toLowerCase().includes(sq0);
       lines.push(fit([mark, ['    ', ''], [mk, mc], ...hl(e.s.title, sq0, ts), ...(inTxt ? [[' ⌕', C.dim]] : [])], W - 13, base) +
         fit([[tag.padEnd(6), C.accent], [ago(e.s.mtime).padStart(6), C.dim], [' ', '']], 13, base));
@@ -2223,6 +2226,6 @@ else {
     readSession, buildProject, scan, scanAsync, finishScan, sortProjects, projectDirs,
     view, flatList, stripBlock, offerShortcut, uninstallAll, commandName, suggestCommand, parseTermReplies, sixelOn, SNIP, MARK_A, MARK_B, toggleProject, cacheLoad, selNorm,
     decodePNG, decodeImage, scaleBox, fitSize, halfBlocks, collectImages, extractImages,
-    onMouse, dragPanel, panelLimits, embedLayout, editBuf, normalizeKeys, stripJsonc, wtCtrlV, fbNames, fbOpen, fbRows, sidebarMouse, toggleTheme, gitBranch, imageMarkerAt, shownSession, linkChats, findImageByNumber: images.findImageByNumber,
+    onMouse, dragPanel, panelLimits, embedLayout, sessTag, editBuf, normalizeKeys, stripJsonc, wtCtrlV, fbNames, fbOpen, fbRows, sidebarMouse, toggleTheme, gitBranch, imageMarkerAt, shownSession, linkChats, findImageByNumber: images.findImageByNumber,
   };
 }

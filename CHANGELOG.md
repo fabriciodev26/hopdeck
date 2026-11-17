@@ -6,6 +6,7 @@
 - **Ancho de los paneles con el ratón.** Agarra con el cursor la línea `│` que separa la lista del chat, o el chat del panel de git, y arrástrala a izquierda o derecha. Cada panel puede medir entre el 15 % y el 50 % del ancho del terminal (nunca menos de 20 columnas), el chat siempre conserva su ancho mínimo y el ancho se recuerda para la próxima vez. Solo en el terminal integrado (en tmux, arrastra el borde del panel como siempre).
 
 ### Arreglado
+- **Una misma conversación aparecía varias veces** (con el mismo título y un `#xxxx` distinto). Cada vez que reanudas una conversación, o Claude Code la continúa tras agotar el contexto, crea un archivo nuevo que copia todo el historial anterior. Hopdeck ahora reconoce que comparten el primer mensaje, los junta en una sola fila y abre la que tiene el último mensaje, que ya contiene todo lo anterior. La fila lleva `↻N` (continuada N veces). El `#xxxx` queda solo para conversaciones realmente distintas con el mismo título. La fecha del archivo no sirve para elegir: también cambia al abrir una conversación vieja.
 - **macOS: el cuadro del hover salía sin la imagen** cuando el formato no lo entendía el decodificador propio (WebP, GIF, HEIC, TIFF, PNG entrelazado o imágenes enormes). Ahora esas imágenes se convierten con `sips`, que viene con macOS. Y si aun así no se puede leer, el cuadro indica el formato («No se puede previsualizar este formato (image/webp)») para saber por qué.
 
 ## 1.3.1
