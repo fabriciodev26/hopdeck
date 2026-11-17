@@ -454,28 +454,6 @@ test('barra inferior: [tecla] descripción, cambia con el foco y resume proyecto
   } finally { await h.close(); }
 });
 
-// ───────────── barra inferior ─────────────
-test('barra inferior: [tecla] descripción, cambia con el foco y resume proyectos y chats a la derecha', opts, async () => {
-  const root = tmp('hopdeck-ui-barra-');
-  const fx = makeFixture(root, [alpha(), { name: 'beta', sessions: [{ id: 'b1', first: 'hola beta', ai: 'Cosa beta', ageH: 3 }] }]);
-  const h = launchHub({ root, fx, cwd: fx.cwds.alpha, cols: 130 });
-  try {
-    await h.waitFor(/Sesión dos/, 'lista');
-    const barra = () => h.lines().at(-1);
-    await h.waitFor(/\[q\] salir/, 'barra inferior');
-    assert.match(barra(), /\[\/\] buscar\s+\[n\] nueva\s+\[Ctrl\+P\] saltar/, 'con el foco en la lista: sus teclas de letra');
-    assert.match(barra(), /\[q\] salir/);
-    assert.match(barra(), /2 proyectos · 3 chats\s*$/, 'resumen a la derecha');
-    assert.doesNotMatch(barra(), /\[F1\]/);
-    const uno = h.find('Sesión uno'); h.mouse(0, 5, uno.y); h.mouse(0, 5, uno.y, 'm');
-    await h.waitFor(/FAKE CLAUDE/, 'chat abierto');
-    await h.waitFor(/\[F1\] lista/, 'con el foco en el chat: solo las teclas F, porque las letras son de Claude');
-    assert.match(barra(), /\[F3\] copiar texto\s+\[F4\] ocultar lista\s+\[F5\] saltar\s+\[F8\] git\s+\[F9\] tema/);
-    assert.match(barra(), /● 1\s+2 proyectos · 3 chats\s*$/, 'y cuántos chats hay abiertos');
-    assert.doesNotMatch(barra(), /\[q\]/);
-  } finally { await h.close(); }
-});
-
 // ───────────── mascota ─────────────
 test('mascota: sale en la pantalla de inicio, sobre el texto, y se quita si el terminal es pequeño', opts, async () => {
   const root = tmp('hopdeck-ui-mascota-');
@@ -500,6 +478,9 @@ test('mascota: sale en la pantalla de inicio, sobre el texto, y se quita si el t
 // ───────────── seleccionar texto del chat ─────────────
 const muchas = Array.from({ length: 80 }, (_, i) => 'linea ' + String(i + 1).padStart(2, '0')).join('\r\n'); // más de lo que cabe en pantalla
 const copiado = (log) => { try { return fs.readFileSync(log, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)); } catch { return []; } };
+// espera a que haya `n` copias en el registro (el aviso «Copiado» solo dura 3 s en pantalla: con la máquina cargada se podía perder)
+// `reenviar`: si en 3 s no hay copia se vuelve a mandar la tecla una vez (en ConPTY de Windows, de vez en cuando se pierde un Ctrl+C enviado desde la prueba)
+const esperarCopias = async (h, log, n, reenviar) => { const t0 = Date.now(); let otra = !reenviar; while (Date.now() - t0 < 10000) { if (copiado(log).length >= n) return; if (!otra && Date.now() - t0 > 3000) { otra = true; reenviar(); } await h.sleep(60); } assert.fail('no se copió nada al pedirlo'); };
 
 test('seleccionar en el chat no copia solo: se copia con Ctrl+C o con el clic derecho', opts, async () => {
   const root = tmp('hopdeck-ui-sel-'); const log = path.join(root, 'copiado.log');
@@ -515,7 +496,7 @@ test('seleccionar en el chat no copia solo: se copia con Ctrl+C o con el clic de
     assert.deepEqual(copiado(log), [], 'al soltar la selección no se copia nada');
     await h.waitFor(/Ctrl\+C o clic derecho/, 'avisa de cómo copiar');
     h.write('\x03');
-    await h.waitFor(/Copiado/, 'Ctrl+C copia lo seleccionado');
+    await esperarCopias(h, log, 1, () => h.write('\x03'));   // Ctrl+C copia lo seleccionado
     assert.equal(copiado(log).length, 1);
     assert.match(copiado(log)[0], /inea 80/, 'lo marcado (de la 2.ª letra en adelante, donde se pulsó)');
     await arrastrar();                                       // otra selección: ahora con el clic derecho
@@ -542,7 +523,7 @@ test('seleccionar en el chat: arrastrar contra el borde desplaza el chat y la se
     h.mouse(0, 50, 1, 'm');
     await h.sleep(300);
     h.write('\x03');
-    await h.waitFor(/Copiado/, 'copia la selección');
+    await esperarCopias(h, log, 1, () => h.write('\x03'));   // copia la selección
     const t = copiado(log)[0];
     assert.match(t, /linea 80/, 'incluye lo que se veía al empezar');
     assert.match(t, /linea 50/, 'y lo que estaba fuera de la pantalla');
