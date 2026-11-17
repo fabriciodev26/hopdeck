@@ -498,8 +498,18 @@ test('mascota: sale en la pantalla de inicio, sobre el texto, y se quita si el t
 const muchas = Array.from({ length: 80 }, (_, i) => 'linea ' + String(i + 1).padStart(2, '0')).join('\r\n'); // más de lo que cabe en pantalla
 const copiado = (log) => { try { return fs.readFileSync(log, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)); } catch { return []; } };
 // espera a que haya `n` copias en el registro (el aviso «Copiado» solo dura 3 s en pantalla: con la máquina cargada se podía perder)
-// `reenviar`: si en 3 s no hay copia se vuelve a mandar la tecla una vez (en ConPTY de Windows, de vez en cuando se pierde un Ctrl+C enviado desde la prueba)
-const esperarCopias = async (h, log, n, reenviar) => { const t0 = Date.now(); let otra = !reenviar; while (Date.now() - t0 < 10000) { if (copiado(log).length >= n) return; if (!otra && Date.now() - t0 > 3000) { otra = true; reenviar(); } await h.sleep(60); } assert.fail('no se copió nada al pedirlo'); };
+const esperarCopias = async (h, log, n) => { const t0 = Date.now(); while (Date.now() - t0 < 10000) { if (copiado(log).length >= n) return; await h.sleep(60); } assert.fail('no se copió nada al pedirlo'); };
+// Espera a que el chat termine de escribir (la línea «linea 80» con el prompt «>» justo debajo) y devuelve la fila de «linea 80».
+// Si se busca antes, la fila cambia de sitio al aparecer el prompt: se selecciona la fila del prompt, que no tiene texto, y no hay nada que copiar.
+const lineaListo = async (h) => {
+  const t0 = Date.now();
+  while (Date.now() - t0 < 10000) {
+    const ls = h.lines(), i = ls.findIndex((l) => l.includes('linea 80'));
+    if (i >= 0 && /│>/.test(ls[i + 1] || '')) return i + 1; // fila (desde 1) de «linea 80»
+    await h.sleep(60);
+  }
+  assert.fail('el chat no terminó de escribir las líneas');
+};
 
 test('seleccionar en el chat no copia solo: se copia con Ctrl+C o con el clic derecho', opts, async () => {
   const root = tmp('hopdeck-ui-sel-'); const log = path.join(root, 'copiado.log');
@@ -508,14 +518,13 @@ test('seleccionar en el chat no copia solo: se copia con Ctrl+C o con el clic de
   try {
     await h.waitFor(/Sesión dos/, 'lista');
     const uno = h.find('Sesión uno'); h.mouse(0, 5, uno.y); h.mouse(0, 5, uno.y, 'm');
-    await h.waitFor(/linea 80/, 'chat con mucho texto');
-    const y = h.find('linea 80').y;
+    const y = await lineaListo(h);                           // chat con mucho texto, ya escrito entero
     const arrastrar = async () => { h.mouse(0, 39, y); h.mouse(32, 45, y); h.mouse(32, 50, y); h.mouse(0, 50, y, 'm'); await h.sleep(400); };
     await arrastrar();
     assert.deepEqual(copiado(log), [], 'al soltar la selección no se copia nada');
     await h.waitFor(/Ctrl\+C o clic derecho/, 'avisa de cómo copiar');
     h.write('\x03');
-    await esperarCopias(h, log, 1, () => h.write('\x03'));   // Ctrl+C copia lo seleccionado
+    await esperarCopias(h, log, 1);                          // Ctrl+C copia lo seleccionado
     assert.equal(copiado(log).length, 1);
     assert.match(copiado(log)[0], /inea 80/, 'lo marcado (de la 2.ª letra en adelante, donde se pulsó)');
     await arrastrar();                                       // otra selección: ahora con el clic derecho
@@ -532,9 +541,8 @@ test('seleccionar en el chat: arrastrar contra el borde desplaza el chat y la se
   try {
     await h.waitFor(/Sesión dos/, 'lista');
     const uno = h.find('Sesión uno'); h.mouse(0, 5, uno.y); h.mouse(0, 5, uno.y, 'm');
-    await h.waitFor(/linea 80/, 'chat con mucho texto');
+    const y = await lineaListo(h);                           // chat con mucho texto, ya escrito entero
     assert.doesNotMatch(h.screen(), /linea 40/, 'al principio solo se ve el final');
-    const y = h.find('linea 80').y;
     h.mouse(0, 80, y);                                       // empieza abajo, pasado el final de la línea (así entra entera)...
     h.mouse(32, 50, y - 3);
     h.mouse(32, 50, 1);                                      // ...y arrastra por encima del chat, y se queda quieto ahí
@@ -542,7 +550,7 @@ test('seleccionar en el chat: arrastrar contra el borde desplaza el chat y la se
     h.mouse(0, 50, 1, 'm');
     await h.sleep(300);
     h.write('\x03');
-    await esperarCopias(h, log, 1, () => h.write('\x03'));   // copia la selección
+    await esperarCopias(h, log, 1);                          // copia la selección
     const t = copiado(log)[0];
     assert.match(t, /linea 80/, 'incluye lo que se veía al empezar');
     assert.match(t, /linea 50/, 'y lo que estaba fuera de la pantalla');
