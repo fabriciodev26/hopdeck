@@ -3,6 +3,7 @@
 ## Sin publicar
 
 ### Nuevo
+- **Barra inferior con las teclas entre corchetes**, como `[/] buscar  [n] nueva  [Ctrl+P] saltar`. Cambia con el foco: con la lista activa muestra las teclas de letra, y con un chat abierto solo las F (`[F1] lista  [F3] copiar texto  [F4] ocultar lista  [F5] saltar  [F8] git  [F9] tema`), porque las letras son de Claude. A la derecha, los chats abiertos y cuántos proyectos y chats hay; ese resumen se omite si no caben las teclas enteras.
 - **La mascota de Hopdeck, un sapo naranja con auriculares.** Sale en la pantalla de inicio (el panel derecho cuando no hay ningún chat abierto), encima del texto y del mayor tamaño que quepa; si el terminal es pequeño o usas `NO_COLOR`, se queda el texto de siempre. También en la pantalla de carga y en el panel de tmux. Y con el comando `hopdeck mascot` (`--size small|normal|large`, `--plain` para dibujarla sin colores). Va dentro del programa, sin archivos de imagen ni Python; en el README hay una imagen (`docs/mascot.png`).
 
 ## 1.4.1

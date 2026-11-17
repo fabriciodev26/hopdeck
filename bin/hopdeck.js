@@ -1416,12 +1416,19 @@ function renderEmbed() {
     rowsOut.push((left ? (left[y] || ' '.repeat(SW)) + div : '') + right + (gitR ? gdiv + gitR[y] : ''));
   }
   const live = E.sessions.size;
-  const k = (key, d) => [[key, C.accent], [' ' + d + '   ', C.dim]];
+  const k = (key, d) => [['[' + key + ']', C.accent + C.bold], [' ' + d + '  ', C.text]]; // [tecla] descripción
   const sb = sh && sh.ready ? sh.term.buffer.active : null;
   const back = sb ? sb.baseY - sb.viewportY : 0;
-  rowsOut.push(fit([[' ', ''], [E.note ? E.note.t + '   ' : '', C.ok], [back > 0 ? T.up(back, sb && sb.baseY ? Math.round((100 * sb.viewportY) / sb.baseY) : -1) + '   ' : '', C.warn],
-    ...k('F1', T.bar1), ...k('F2', T.bar2), ...k('F3', E.mouse ? T.bar4 : T.bar5), ...k('F4', E.hideSide ? T.bar7 : T.bar6), ...k('F8', T.bar8),
-    [live ? '● ' + live : '', C.ok]], W));
+  // las teclas cambian con el foco: en el chat, las letras son de Claude y solo valen las F; en la lista valen las letras
+  const keys = E.focus === 'right' && sh
+    ? [...k('F1', T.barList), ...k('F3', E.mouse ? T.bar4 : T.bar5), ...k('F4', E.hideSide ? T.bar7 : T.bar6), ...k('F5', T.barJump), ...k('F8', T.bar8), ...k('F9', T.barTheme)]
+    : [...k('/', T.k.find), ...k('n', T.k.neu), ...k('Ctrl+P', T.barJump), ...k('b', T.bar8), ...k('t', T.barTheme), ...k('?', T.kHelp), ...k('q', T.k.quit)];
+  // a la derecha: los chats abiertos y cuántos proyectos y chats hay (se omiten si no caben)
+  const stat = [[live ? '● ' + live + '  ' : '', C.ok], [T.barCount(S.projects.length, S.projects.reduce((a, p) => a + p.sessions.length, 0)), C.dim], [' ', '']];
+  const statW = stat.reduce((a, [t]) => a + strW(t), 0), keysW = keys.reduce((a, [t]) => a + strW(t), 0) + strW(E.note ? E.note.t : '') + 8;
+  const full = W - statW >= keysW; // el resumen solo sale si las teclas caben enteras
+  const barL = fit([[' ', ''], [E.note ? E.note.t + '   ' : '', C.ok], [back > 0 ? T.up(back, sb && sb.baseY ? Math.round((100 * sb.viewportY) / sb.baseY) : -1) + '   ' : '', C.warn], ...keys], full ? W - statW : W);
+  rowsOut.push(full ? barL + fit(stat, statW) : barL);
   const changes = diffRows(rowsOut);
   // imagen real (Sixel) sobre el hueco del cuadro: se dibuja al aparecer y se repite si algo reescribe esas filas (con un mínimo de 150 ms entre dibujos)
   let sx = '';

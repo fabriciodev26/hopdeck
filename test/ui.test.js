@@ -398,6 +398,28 @@ test('tema: t y F9 cambian entre claro y oscuro sin reiniciar, repintan todo y l
   } finally { await h.close(); }
 });
 
+// ───────────── barra inferior ─────────────
+test('barra inferior: [tecla] descripción, cambia con el foco y resume proyectos y chats a la derecha', opts, async () => {
+  const root = tmp('hopdeck-ui-barra-');
+  const fx = makeFixture(root, [alpha(), { name: 'beta', sessions: [{ id: 'b1', first: 'hola beta', ai: 'Cosa beta', ageH: 3 }] }]);
+  const h = launchHub({ root, fx, cwd: fx.cwds.alpha, cols: 130 });
+  try {
+    await h.waitFor(/Sesión dos/, 'lista');
+    const barra = () => h.lines().at(-1);
+    await h.waitFor(/\[q\] salir/, 'barra inferior');
+    assert.match(barra(), /\[\/\] buscar\s+\[n\] nueva\s+\[Ctrl\+P\] saltar/, 'con el foco en la lista: sus teclas de letra');
+    assert.match(barra(), /\[q\] salir/);
+    assert.match(barra(), /2 proyectos · 3 chats\s*$/, 'resumen a la derecha');
+    assert.doesNotMatch(barra(), /\[F1\]/);
+    const uno = h.find('Sesión uno'); h.mouse(0, 5, uno.y); h.mouse(0, 5, uno.y, 'm');
+    await h.waitFor(/FAKE CLAUDE/, 'chat abierto');
+    await h.waitFor(/\[F1\] lista/, 'con el foco en el chat: solo las teclas F, porque las letras son de Claude');
+    assert.match(barra(), /\[F3\] copiar texto\s+\[F4\] ocultar lista\s+\[F5\] saltar\s+\[F8\] git\s+\[F9\] tema/);
+    assert.match(barra(), /● 1\s+2 proyectos · 3 chats\s*$/, 'y cuántos chats hay abiertos');
+    assert.doesNotMatch(barra(), /\[q\]/);
+  } finally { await h.close(); }
+});
+
 // ───────────── mascota ─────────────
 test('mascota: sale en la pantalla de inicio, sobre el texto, y se quita si el terminal es pequeño', opts, async () => {
   const root = tmp('hopdeck-ui-mascota-');
