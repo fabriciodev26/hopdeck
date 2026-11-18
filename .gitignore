@@ -20,6 +20,7 @@ coverage/
 
 # Preferencias y caché del propio hub (se crean en tu carpeta de usuario, por si se ejecuta aquí)
 .hopdeck.json
+.hopdeck-codex.json
 .hopdeck-cache.json
 hopdeck-tmux.conf
 

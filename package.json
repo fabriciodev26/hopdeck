@@ -1,7 +1,7 @@
 {
   "name": "hopdeck",
   "version": "1.4.3",
-  "description": "Selector visual de proyectos y conversaciones para Claude Code, en la terminal: salta entre proyectos sin hacer cd.",
+  "description": "Selector visual de proyectos y conversaciones para Claude Code y Codex CLI, en la terminal: salta entre proyectos sin hacer cd.",
   "author": "fabriciodev26",
   "license": "MIT",
   "homepage": "https://github.com/fabriciodev26/hopdeck#readme",
@@ -31,6 +31,7 @@
   "keywords": [
     "claude",
     "claude-code",
+    "codex",
     "cli",
     "projects",
     "resume",
@@ -42,7 +43,7 @@
     "wsl"
   ],
   "scripts": {
-    "test": "node --test test/unit.test.js test/e2e.test.js test/ui.test.js",
+    "test": "node --test test/unit.test.js test/e2e.test.js test/ui.test.js test/codex.test.js",
     "doctor": "node bin/hopdeck.js doctor",
     "screenshots": "node scripts/screenshots.js",
     "demo": "node scripts/demo.js"

@@ -1,5 +1,15 @@
 # Cambios
 
+## Sin publicar
+
+### Nuevo
+- Primer soporte para Codex CLI: `hopdeck --provider codex`, proyectos y conversaciones mediante `codex app-server`, vistas previas, chats nuevos y reanudados con `codex resume`, y varios chats abiertos en el panel integrado.
+- `hopdeck shortcut on` instala o actualiza los atajos de Claude y Codex. Con argumentos se ejecuta directamente la CLI correspondiente.
+- Preferencias e historial separados por proveedor; los títulos y archivados de Codex se gestionan localmente en `~/.hopdeck-codex.json`.
+
+### Límites de la primera versión
+- Imágenes, estadísticas y búsqueda en el contenido completo permanecen en el modo Claude. Los indicadores de actividad de Codex dependen de su terminal.
+
 ## 1.4.3
 
 ### Arreglado

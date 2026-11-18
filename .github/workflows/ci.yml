@@ -2,7 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'codex/**']
+  workflow_dispatch:
   pull_request:
   schedule:
     - cron: '17 6 * * 1' # cada lunes: detecta vulnerabilidades nuevas en las dependencias aunque no haya cambios

@@ -7,7 +7,7 @@
 
 <p align="center"><img alt="The Hopdeck mascot: an orange toad with headphones" src="docs/mascot.png" width="130"></p>
 
-<p align="center"><b>Hop between your Claude Code projects and conversations without leaving the terminal.</b></p>
+<p align="center"><b>Hop between your Claude Code or Codex projects and conversations without leaving the terminal.</b></p>
 
 [Español](README.md) · **English**
 
@@ -19,6 +19,20 @@
 Type `claude` in your terminal and **pick which project and conversation to continue**, without leaving and without `cd`.
 The project list stays on the left and the conversation on the right.
 
+### Claude and Codex
+
+With shortcuts installed, `claude` opens Hopdeck for Claude Code and `codex` opens it for Codex CLI. Each mode has its own history and preferences. Commands with arguments (`claude -p ...`, `codex exec ...`, `codex resume ...`) still run the original CLI directly.
+
+```bash
+hopdeck --provider claude
+hopdeck --provider codex
+hopdeck shortcut on
+```
+
+Existing users can run `hopdeck shortcut on` again and open a new terminal to add the Codex shortcut. From a source checkout, run `npm link` first to point the global command at the local version.
+
+**First Codex version:** projects, conversations, previews, project/title/first-message search, new and resumed chats, multiple live chats and the Git panel. Requires an installed `codex` supporting `codex app-server`. Hopdeck reads history through its local API and resumes with `codex resume <ID>`; it does not edit Codex databases. Custom titles and archives are local to Hopdeck (`~/.hopdeck-codex.json`). Image galleries, statistics and full-content search remain available in Claude mode; Codex activity indicators are basic and depend on its terminal text.
+
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/02-vista-dividida-light.svg">
   <img alt="Split view: project list on the left, chat on the right" src="docs/screenshots/02-vista-dividida.svg">
@@ -26,8 +40,8 @@ The project list stays on the left and the conversation on the right.
 
 <p align="center"><img alt="Hopdeck in action: preview, chat, image on hover and git panel" src="docs/demo.gif" width="900"></p>
 
-> **Independent community project.** Not affiliated with, endorsed or sponsored by Anthropic.
-> "Claude" and "Claude Code" are trademarks of Anthropic, PBC. Hopdeck only reads the local history that Claude Code already keeps on your machine and launches the `claude` command you have installed.
+> **Independent community project.** Not affiliated with, endorsed or sponsored by Anthropic or OpenAI.
+> Hopdeck reads local Claude Code history or queries history through Codex CLI, then launches your installed `claude` or `codex` command. Each CLI retains its own authentication and normal connections.
 
 ## Contents
 
@@ -43,7 +57,7 @@ Hopdeck shows **all your projects and conversations on one screen**, with previe
 **You need**
 
 - [Node.js](https://nodejs.org) 22 or newer.
-- [Claude Code](https://claude.com/claude-code) installed (the `claude` command must work in your terminal).
+- [Claude Code](https://claude.com/claude-code) or [Codex CLI](https://developers.openai.com/codex/cli) installed (the corresponding command must work in your terminal).
 - A terminal with color. On Windows, **Windows Terminal** is recommended.
 
 **Install**

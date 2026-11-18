@@ -75,13 +75,14 @@ function makePNG(w, h, px, ctype = 6) {
  * Abre el hub en un PTY real con un "claude" falso en el PATH y devuelve utilidades para manejarlo.
  * Devuelve null si node-pty / xterm no están disponibles.
  */
-function launchHub({ root, fx, env: extra = {}, home = null, cwd = null, cols = 110, rows = 26 }) {
+function launchHub({ root, fx, env: extra = {}, home = null, cwd = null, cols = 110, rows = 26, args = [] }) {
   let pty, Terminal;
   try { pty = require('@lydell/node-pty'); Terminal = require('@xterm/headless').Terminal; } catch { return null; }
   const bin = path.join(root, 'bin'); fs.mkdirSync(bin, { recursive: true });
-  const fake = path.join(__dirname, 'fixtures', 'fake-claude.js');
-  if (process.platform === 'win32') fs.writeFileSync(path.join(bin, 'claude.cmd'), `@echo off\r\n"${process.execPath}" "${fake}" %*\r\n`);
-  else { fs.writeFileSync(path.join(bin, 'claude'), `#!/bin/sh\nexec "${process.execPath}" "${fake}" "$@"\n`); fs.chmodSync(path.join(bin, 'claude'), 0o755); }
+  const provider = extra.HOPDECK_PROVIDER || 'claude';
+  const fake = path.join(__dirname, 'fixtures', `fake-${provider}.js`);
+  if (process.platform === 'win32') fs.writeFileSync(path.join(bin, provider + '.cmd'), `@echo off\r\n"${process.execPath}" "${fake}" %*\r\n`);
+  else { fs.writeFileSync(path.join(bin, provider), `#!/bin/sh\nexec "${process.execPath}" "${fake}" "$@"\n`); fs.chmodSync(path.join(bin, provider), 0o755); }
   // En Windows la variable se llama "Path": si se añadiera otra "PATH" ganaría la original y no se vería el claude falso.
   const pathKey = Object.keys(process.env).find((k) => k.toLowerCase() === 'path') || 'PATH';
   const env = {
@@ -92,7 +93,7 @@ function launchHub({ root, fx, env: extra = {}, home = null, cwd = null, cols = 
   if (home) { env.HOME = home; env.USERPROFILE = home; }
   delete env.HOPDECK_INSIDE; delete env.TMUX; delete env.NO_COLOR;
   const term = new Terminal({ cols, rows, allowProposedApi: true });
-  const p = pty.spawn(process.execPath, [path.join(__dirname, '..', 'bin', 'hopdeck.js')], { name: 'xterm-256color', cols, rows, cwd: cwd || root, env });
+  const p = pty.spawn(process.execPath, [path.join(__dirname, '..', 'bin', 'hopdeck.js'), ...args], { name: 'xterm-256color', cols, rows, cwd: cwd || root, env });
   let dead = false;
   term.onData((d) => { if (!dead) try { p.write(d); } catch { /* */ } });
   p.onData((d) => term.write(d));

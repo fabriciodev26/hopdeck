@@ -7,7 +7,7 @@
 
 <p align="center"><img alt="La mascota de Hopdeck: un sapo naranja con auriculares" src="docs/mascot.png" width="130"></p>
 
-<p align="center"><b>Salta entre tus proyectos y conversaciones de Claude Code, sin salir de la terminal.</b></p>
+<p align="center"><b>Salta entre tus proyectos y conversaciones de Claude Code o Codex, sin salir de la terminal.</b></p>
 
 **Español** · [English](README.en.md)
 
@@ -19,6 +19,20 @@
 Escribe `claude` en tu terminal y **elige en qué proyecto y conversación seguir**, sin salir y sin hacer `cd`.
 La lista de proyectos queda a la izquierda y la conversación a la derecha.
 
+### Claude y Codex
+
+Con los atajos instalados, `claude` abre Hopdeck con Claude Code y `codex` lo abre con Codex CLI. Cada modo muestra su propio historial y recuerda sus propias preferencias. Los comandos con argumentos (`claude -p ...`, `codex exec ...`, `codex resume ...`) siguen ejecutando directamente su CLI.
+
+```bash
+hopdeck --provider claude
+hopdeck --provider codex
+hopdeck shortcut on
+```
+
+Si ya tenías el atajo de Claude, ejecuta otra vez `hopdeck shortcut on` y abre una terminal nueva para añadir el de Codex. Desde una copia del repositorio, usa primero `npm link` para actualizar el comando global con tu código local.
+
+**Primera versión de Codex:** lista proyectos y conversaciones, vista previa, búsqueda por proyecto/título/primer mensaje, chats nuevos y reanudados, varios chats abiertos y panel de Git. Necesita `codex` instalado y con soporte para `codex app-server`. Hopdeck consulta el historial mediante su API local y reanuda con `codex resume <ID>`; no modifica las bases de datos de Codex. Los nombres personalizados y archivados se guardan solo en Hopdeck (`~/.hopdeck-codex.json`). La galería de imágenes, estadísticas y búsqueda en el contenido completo quedan disponibles en el modo Claude; los indicadores de actividad de Codex son básicos y dependen del texto de su terminal.
+
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/02-vista-dividida-light.svg">
   <img alt="Vista dividida: lista de proyectos a la izquierda y el chat a la derecha" src="docs/screenshots/02-vista-dividida.svg">
@@ -26,8 +40,8 @@ La lista de proyectos queda a la izquierda y la conversación a la derecha.
 
 <p align="center"><img alt="Hopdeck en acción: vista previa, chat, imagen al pasar el cursor y panel de git" src="docs/demo.gif" width="900"></p>
 
-> **Proyecto independiente de la comunidad.** No está afiliado, respaldado ni patrocinado por Anthropic.
-> "Claude" y "Claude Code" son marcas de Anthropic, PBC. Hopdeck solo lee el historial local que Claude Code ya guarda en tu equipo y lanza el comando `claude` que tú tengas instalado.
+> **Proyecto independiente de la comunidad.** No está afiliado, respaldado ni patrocinado por Anthropic ni OpenAI.
+> Hopdeck lee el historial local de Claude Code o consulta el historial mediante Codex CLI y lanza el comando `claude` o `codex` que tengas instalado. Cada CLI conserva su autenticación y sus conexiones habituales.
 
 ## Índice
 
@@ -43,7 +57,7 @@ Hopdeck te enseña **todos tus proyectos y conversaciones en una sola pantalla**
 **Necesitas**
 
 - [Node.js](https://nodejs.org) 22 o superior.
-- [Claude Code](https://claude.com/claude-code) instalado (el comando `claude` debe funcionar en tu terminal).
+- [Claude Code](https://claude.com/claude-code) o [Codex CLI](https://developers.openai.com/codex/cli) instalado (el comando correspondiente debe funcionar en tu terminal).
 - Una terminal con color. En Windows se recomienda **Windows Terminal**.
 
 **Instalar**
@@ -220,6 +234,8 @@ Casi nunca hace falta tocar nada. Lo más útil:
 | Variable de entorno | Efecto |
 |---|---|
 | `HOPDECK_LANG` | `es` o `en` (por defecto, el idioma del sistema) |
+| `HOPDECK_PROVIDER` | `claude` o `codex` (por defecto, `claude`; `--provider` tiene prioridad) |
+| `CODEX_HOME` | Carpeta de Codex, si no es `~/.codex` |
 | `HOPDECK_THEME` | `light` o `dark`: manda sobre lo guardado con `hopdeck theme` |
 | `HOPDECK_SIXEL` | `1` fuerza la imagen real al pasar el cursor por `[Image #N]`, `0` usa siempre bloques (por defecto se detecta) |
 | `HOPDECK_BUSY` | `output` marca un chat como «trabajando» con cualquier salida reciente. Por defecto solo cuando Claude muestra «esc to interrupt» |

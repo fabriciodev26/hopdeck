@@ -3,13 +3,18 @@
 /**
  * Hopdeck
  * Selector visual de proyectos y sesiones para Claude Code.
- * Cero dependencias · arranque instantáneo.
+ * Claude Code y Codex CLI en una misma interfaz de terminal.
  */
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const cp = require('child_process');
 const readline = require('readline');
+let provider;
+try { provider = require('../lib/provider'); }
+catch (err) { if (require.main !== module) throw err; console.error(err.message); process.exit(2); }
+const codexHistory = require('../lib/codex-history');
+const { findExecutable } = require('../lib/executable');
 
 const { LANG, T } = require('../lib/i18n');
 const { TRUE, NOCOL, LIGHT, setTheme, isLight, fg, bg, R, C, cw, strW, fit, clean } = require('../lib/style');
@@ -30,7 +35,7 @@ let VERSION = '0.0.0';
 try { VERSION = require('../package.json').version; } catch { /* sin package.json */ }
 const WIN = process.platform === 'win32';
 // Preferencias propias: proyectos fijados/ocultos, ancho del panel, ratón.
-const CFG_FILE = process.env.HOPDECK_CONFIG || path.join(os.homedir(), '.hopdeck.json');
+const CFG_FILE = process.env.HOPDECK_CONFIG || provider.configFile;
 const CFG = { pinned: [], hidden: [], archived: [], sidebar: 0, mouse: true, notify: true, last: null };
 const saveCfg = () => { try { fs.writeFileSync(CFG_FILE, JSON.stringify(CFG, null, 2), { mode: 0o600 }); } catch { /* solo lectura */ } };
 try { Object.assign(CFG, JSON.parse(fs.readFileSync(CFG_FILE, 'utf8'))); } catch { /* primera vez */ }
@@ -45,7 +50,8 @@ function sortProjects(list) {
 }
 
 function finishScan(projects) {
-  endScan();
+  if (!provider.isCodex) endScan();
+  if (provider.isCodex) for (const p of projects) for (const s of p.sessions) s.title = CFG.titles?.[s.id] || s.title;
   const cur = process.cwd();
   const have = (d) => projects.some((p) => p.cwd === d);
   if (!have(cur)) projects.push({ key: '__cwd', cwd: cur, name: baseName(cur), sessions: [], mtime: Date.now() });
@@ -72,7 +78,8 @@ function linkChats(projects) {
   for (const x of pend) {
     if (pend.filter((y) => y.cwd === x.cwd).length !== 1) continue; // varios chats nuevos en la misma carpeta: ambiguo
     const p = projects.find((q) => q.cwd === x.cwd); if (!p) continue;
-    const c = p.sessions.filter((q) => q.mtime >= x.t0 - 2000 && !taken.has(q.id) && !E.sessions.has(q.id)).sort((a, b) => b.mtime - a.mtime)[0];
+    const candidates = p.sessions.filter((q) => q.mtime >= x.t0 - 2000 && !taken.has(q.id) && !E.sessions.has(q.id) && (!provider.isCodex || !x.knownIds?.has(q.id))).sort((a, b) => b.mtime - a.mtime);
+    const c = provider.isCodex && candidates.length !== 1 ? null : candidates[0];
     if (c) { x.sid = c.id; x.title = c.title; taken.add(c.id); }
   }
   embedLive();
@@ -102,12 +109,14 @@ function gitBranch(cwd) {
 }
 
 function scan() {
+  if (provider.isCodex) return finishScan(codexHistory.scanSync());
   beginScan();
   return finishScan(projectDirs().map(buildProject).filter(Boolean));
 }
 
 /** Igual que scan() pero cede el control al bucle de eventos para poder animar el loader. */
 async function scanAsync(onProgress) {
+  if (provider.isCodex) return finishScan(await codexHistory.scanProjectsAsync(onProgress));
   const dirs = projectDirs(); const projects = [];
   beginScan();
   for (let i = 0; i < dirs.length; i++) {
@@ -149,7 +158,9 @@ async function reloadAsync(after, silent) {
   if (reloading) return;
   reloading = true; if (!silent) { S.loading = true; ensureSpin(); if (active) render(); }
   deepPrev = null;
-  try { S.projects = await scanAsync(); } finally { reloading = false; if (!silent) S.loading = false; }
+  try { S.projects = await scanAsync(); }
+  catch (err) { S.flash = String(err.message).split('\n')[0]; }
+  finally { reloading = false; if (!silent) S.loading = false; }
   if (after) after();
   if (active) render();
 }
@@ -181,6 +192,8 @@ let deepT = null, deepTok = 0, deepPrev = null, deepJob = null;
 function queryChanged() {
   clearTimeout(deepT); deepTok++; S.deepHits = null;
   if (deepJob) { deepJob.cancel(); deepJob = null; }
+  // Codex history is served by its CLI; this release searches titles, projects and first messages.
+  if (provider.isCodex) { S.deep = false; S.auto = false; S.loading = false; return; }
   // Si ningún título ni proyecto coincide, se busca solo dentro del contenido sin que haya que pedirlo con Tab
   S.auto = !S.deep && S.query.trim().length >= 3 && !view().length;
   const deepOn = S.deep || S.auto;
@@ -381,7 +394,7 @@ function frameTree(W, H) {
   S.coff = scroll(S.coff, S.c, bodyH);
   const lines = [];
   const searchOn = !S.fb && !S.qs && S.prompt === null && !S.help && (S.searching || !!S.query.trim()); // hay una búsqueda en marcha
-  const head = [[' » ', C.brand], ['Hop', C.brand + C.bold], ['deck', C.text + C.bold], ['  ' + S.projects.length, C.dim], [S.loading && !searchOn ? '  ' + spin() : '', C.accent], ...liveSummary()];
+  const head = [[' » ', C.brand], ['Hop', C.brand + C.bold], ['deck', C.text + C.bold], [' ' + provider.label, C.dim], ['  ' + S.projects.length, C.dim], [S.loading && !searchOn ? '  ' + spin() : '', C.accent], ...liveSummary()];
   // «⌕ / buscar» siempre a la vista, arriba a la derecha (sin la palabra si el título y los chats abiertos ya ocupan el sitio)
   const headW = head.reduce((a, [t]) => a + strW(t), 0), longHint = ' ⌕ / ' + T.k.find + ' ', hint = headW + strW(longHint) <= W ? longHint : headW + 5 <= W ? ' ⌕ / ' : '';
   lines.push(searchOn
@@ -511,7 +524,7 @@ function tmuxPanes() {
 /** Abre (o trae al frente) una conversación en el panel derecho sin matar las demás. */
 function launchSlot(project, session) {
   if (!fs.existsSync(project.cwd)) { flash(T.missing + ': ' + shortPath(project.cwd)); return; }
-  const bin = findClaude();
+  const bin = findClaude(provider.id);
   if (!bin) { flash(T.noClaude); return; }
   const mine = process.env.TMUX_PANE;
   const key = session ? session.id : 'new-' + Date.now();
@@ -520,7 +533,7 @@ function launchSlot(project, session) {
     const slot = tmux('list-panes', '-t', mine, '-F', '#{pane_id}').split('\n').find((id) => id && id !== mine);
     let target = session && (panes.find((x) => x.key === key) || {}).id;
     if (!target) {
-      const cmd = chatCmd(bin, [...(session ? ['--resume', session.id] : []), ...extraArgs], mine);
+      const cmd = chatCmd(bin, provider.launchArgs(session, extraArgs), mine);
       const slotInfo = panes.find((x) => x.id === slot);
       if (slotInfo && !slotInfo.key) { tmux('respawn-pane', '-k', '-t', slot, '-c', project.cwd, cmd); target = slot; }
       else target = tmux('new-window', '-d', '-P', '-F', '#{pane_id}', '-c', project.cwd, cmd);
@@ -566,6 +579,9 @@ function doRename(x, name) {
   name = (name || '').trim();
   if (!x || !name) return;
   if (S.live.has(x.id)) { flash(T.busyRename); return; }
+  if (provider.isCodex) {
+    CFG.titles = { ...CFG.titles, [x.id]: name }; saveCfg(); reloadKeep(); return;
+  }
   // Claude Code guarda el título como una línea más del historial
   try { fs.appendFileSync(x.file, JSON.stringify({ type: 'custom-title', customTitle: name, sessionId: x.id }) + '\n'); } catch (e) { flash(String(e.message).split('\n')[0]); return; }
   reloadKeep();
@@ -1089,6 +1105,7 @@ const previewMsgs = () => (CFG.previewMsgs > 0 ? CFG.previewMsgs : 12);
 const extractImages = (file) => images.extractImages(file, maxImages());
 
 async function imagesOf(x) {
+  if (provider.isCodex) return [];
   const hit = IMG.get(x.file);
   if (hit && hit.m === x.mtime) return hit.images;
   const images = await extractImages(x.file);
@@ -1333,9 +1350,18 @@ function galleryKey(raw) {
 // Vista previa de los últimos mensajes de la conversación seleccionada (cuando no hay un chat abierto).
 const PREV = new Map();
 function previewFor(x) {
-  const hit = PREV.get(x.file);
+  const key = provider.isCodex ? x.id : x.file;
+  const hit = PREV.get(key);
   if (hit && hit.m === x.mtime) return hit.msgs;
-  PREV.set(x.file, { m: x.mtime, msgs: null });
+  PREV.set(key, { m: x.mtime, msgs: null });
+  if (provider.isCodex) {
+    codexHistory.previewSession(x, previewMsgs()).then((msgs) => {
+      PREV.set(key, { m: x.mtime, msgs }); if (active) render();
+    }, () => {
+      PREV.set(key, { m: x.mtime, msgs: x.first ? [{ role: 'user', text: x.first }] : [] }); if (active) render();
+    });
+    return null;
+  }
   (async () => {
     let msgs = [];
     try {
@@ -1396,6 +1422,7 @@ const chatFile = (x) => x.file || (x.sid ? fileOfSid(x.sid) : null);
  * plano y, si el archivo crece (el chat abierto), se actualiza leyendo solo lo nuevo, como mucho cada 3 s.
  */
 function chatStats(file) {
+  if (provider.isCodex) return undefined;
   if (!file) return undefined;
   let e = STATS.get(file);
   if (e) { STATS.delete(file); STATS.set(file, e); } // los más recientes al final
@@ -1512,13 +1539,13 @@ function embedLive() { S.live = new Set([...E.sessions.keys(), ...[...E.sessions
 
 function embedLaunch(project, session) {
   if (!fs.existsSync(project.cwd)) { flash(T.missing + ': ' + shortPath(project.cwd)); return; }
-  const bin = findClaude();
+  const bin = findClaude(provider.id);
   if (!bin) { flash(T.noClaude); return; }
   const key = session ? session.id : 'new-' + Date.now();
   const ex = chatKeyOf(key);
   if (ex) { const x = E.sessions.get(ex); x.unseen = false; E.shown = ex; E.focus = 'right'; render(); return; }
   const { pty, Terminal } = E.deps; const { rw, th } = embedLayout();
-  const args = [...(session ? ['--resume', session.id] : []), ...extraArgs];
+  const args = provider.launchArgs(session, extraArgs);
   const win = WIN && !/\.exe$/i.test(bin);
   const env = { ...process.env, HOPDECK_SKIP: '1', HOPDECK_INSIDE: '1', TERM: 'xterm-256color', COLORTERM: 'truecolor' };
   let p;
@@ -1528,6 +1555,7 @@ function embedLaunch(project, session) {
   } catch (e) { flash(String(e.message).split('\n')[0]); return; }
   const term = new Terminal({ cols: rw, rows: th, allowProposedApi: true, scrollback: 2000 });
   const sess = { p, term, cursorHidden: false, ready: false, lastData: Date.now(), quietUntil: 0, working: false, busy: false, unseen: false, title: session ? session.title : T.newChat, t0: Date.now(), project: project.name, cwd: project.cwd, sid: session ? session.id : null, closing: false, branch: gitBranch(project.cwd) };
+  if (provider.isCodex) sess.knownIds = new Set(project.sessions.map((s) => s.id));
   const vis = (hidden) => (params) => { if (params.some((x) => x === 25 || (Array.isArray(x) && x.includes(25)))) sess.cursorHidden = hidden; return false; };
   term.parser.registerCsiHandler({ prefix: '?', final: 'h' }, vis(false));
   term.parser.registerCsiHandler({ prefix: '?', final: 'l' }, vis(true));
@@ -1878,6 +1906,7 @@ function leave() {
   process.stdin.pause();
 }
 function quit(code = 0) {
+  codexHistory.close();
   cleanExports();
   if (EMBED || SIDEBAR) rememberState();
   if (EMBED) embedKillAll();
@@ -1894,19 +1923,8 @@ const extraArgs = [];
 
 /** Busca el ejecutable real de claude en el PATH (no depende de funciones del shell). */
 /** Busca un programa en el PATH (por defecto `claude`). Recuerda el resultado mientras el archivo siga existiendo. */
-const FOUND = new Map();
 function findClaude(name = 'claude') {
-  const known = FOUND.get(name);
-  if (known) { try { if (fs.statSync(known).isFile()) return known; } catch { /* ya no está: se busca otra vez */ } FOUND.delete(name); }
-  const exts = WIN ? (process.env.PATHEXT || '.EXE;.CMD;.BAT').split(';').concat(['']) : [''];
-  for (const dir of (process.env.PATH || '').split(path.delimiter)) {
-    if (!dir) continue;
-    for (const ext of exts) {
-      const f = path.join(dir, name + ext.toLowerCase());
-      try { if (fs.statSync(f).isFile()) { FOUND.set(name, f); return f; } } catch { /* siguiente */ }
-    }
-  }
-  return null;
+  return findExecutable(name);
 }
 
 /** El id de una sesión sale del nombre de su archivo; solo se pasa a `claude --resume` si es un identificador normal. */
@@ -1917,11 +1935,11 @@ function launch(project, session) {
   if (SIDEBAR) return launchSlot(project, session);
   if (EMBED) return embedLaunch(project, session);
   if (!fs.existsSync(project.cwd)) { flash(T.missing + ': ' + shortPath(project.cwd)); return; }
-  const bin = findClaude();
+  const bin = findClaude(provider.id);
   if (!bin) { flash(T.noClaude); return; }
   leave();
   process.stdout.write('\x1b[2J\x1b[H');
-  const args = [...(session ? ['--resume', session.id] : []), ...extraArgs];
+  const args = provider.launchArgs(session, extraArgs);
   const opts = { cwd: project.cwd, stdio: 'inherit', env: { ...process.env, HOPDECK_SKIP: '1' } };
   const onInt = () => { /* Ctrl-C es del proceso hijo */ };
   process.on('SIGINT', onInt);
@@ -2037,8 +2055,8 @@ async function run() {
   splash(0, 0);
   const tick = setInterval(() => { frameN++; splash(prog[0], prog[1]); }, 90);
   const prog = [0, 0];
-  S.projects = await scanAsync((d, t) => { prog[0] = d; prog[1] = t; });
-  clearInterval(tick); invalidate();
+  try { S.projects = await scanAsync((d, t) => { prog[0] = d; prog[1] = t; }); }
+  finally { clearInterval(tick); invalidate(); }
   if (SIDEBAR || EMBED) {
     S.open = S.projects[0] && S.projects[0].key;
     restoreState();
@@ -2088,18 +2106,20 @@ function doctor() {
   console.log(`\n  ${C.brand}${C.bold}» Hop${R}${C.text}${C.bold}deck doctor${R}  ${C.dim}v${VERSION}${R}\n`);
   if (parseInt(process.versions.node, 10) < 22) bad(T.dcNodeOld(process.version), T.dcNodeOldHint);
   else ok(`Node ${process.version} · ${process.platform} ${process.arch}`);
-  const n = projectDirs().length;
-  const histDir = shortPath(path.join(CONFIG_DIR, 'projects'));
-  n ? ok(T.dcHist(n, histDir)) : bad(T.dcNoHist(histDir), T.dcNoHistHint);
-  const bin = findClaude();
-  bin ? ok(T.dcClaude(shortPath(bin))) : bad(T.dcNoClaude, WIN ? T.dcInstallWin : T.dcInstallUnix);
+  const histDir = shortPath(provider.isCodex ? codexHistory.CONFIG_DIR : path.join(CONFIG_DIR, 'projects'));
+  const bin = findClaude(provider.id);
+  bin ? ok(T.dcClaude(shortPath(bin))) : bad(T.dcNoClaude, provider.isCodex ? 'npm install -g @openai/codex' : WIN ? T.dcInstallWin : T.dcInstallUnix);
+  try {
+    const n = provider.isCodex ? (bin ? codexHistory.scanSync().length : 0) : projectDirs().length;
+    n ? ok(T.dcHist(n, histDir)) : bad(T.dcNoHist(histDir), T.dcNoHistHint);
+  } catch (err) { bad(clean(err.message), 'codex app-server'); }
   const tm = !WIN && hasTmux();
   const deps = loadDeps();
   if (tm) ok(T.dcTmux);
   else if (deps) ok(T.dcEmbed);
   else bad(T.dcNone, WIN ? T.dcNoneWin : T.dcNoneUnix);
   let wrapped = false;
-  for (const t of targets()) { try { if (fs.readFileSync(t.file, 'utf8').includes(MARK_A)) wrapped = true; } catch { /* */ } }
+  for (const t of targets()) { try { const txt = fs.readFileSync(t.file, 'utf8'); if (txt.includes(MARK_A) && txt.includes('hopdeck --provider codex')) wrapped = true; } catch { /* */ } }
   wrapped ? ok(T.dcShort) : bad(T.dcNoShort, findClaude('hopdeck') ? T.dcNoShortHint : T.dcNoCmdHint); // sin el comando en el PATH, "hopdeck shortcut on" no existe todavía
   ok(T.dcPrefs(shortPath(CFG_FILE), shortPath(CACHE_FILE)));
   if (process.env.WT_SESSION) { // dentro de Windows Terminal: Ctrl+V solo pega texto y no deja pegar imágenes
@@ -2151,6 +2171,15 @@ function claude {
 ${MARK_B}
 `,
 };
+
+// Keep one managed block, so upgrading an existing Claude-only shortcut is idempotent.
+// Arguments always go straight to the original CLI; only a bare command opens Hopdeck.
+for (const kind of Object.keys(SNIP)) {
+  const claude = SNIP[kind].replace(MARK_A, '').replace(MARK_B, '').trim()
+    .replace(/\{ hopdeck \}/g, '{ hopdeck --provider claude }').replace(/^(\s+)hopdeck$/gm, '$1hopdeck --provider claude');
+  const codex = claude.replace(/\bclaude\b/g, 'codex');
+  SNIP[kind] = `${MARK_A}\n${claude}\n${codex}\n${MARK_B}\n`;
+}
 
 function stripBlock(txt) {
   const a = txt.indexOf(MARK_A), b = txt.indexOf(MARK_B);
@@ -2214,7 +2243,7 @@ function install(remove, list = targets(), quiet = false) {
   const ok = (s) => `${C.ok}✓${R} ${s}`;
   baks.forEach((b) => log(ok(T.bakMsg(shortPath(b)))));
   if (remove) {
-    log(ok(LANG === 'es' ? 'Atajo eliminado. Escribir "claude" vuelve a ser el comportamiento normal.' : 'Shortcut removed. Typing "claude" is back to normal.'));
+    log(ok(LANG === 'es' ? 'Atajos eliminados. "claude" y "codex" vuelven a su comportamiento normal.' : 'Shortcuts removed. "claude" and "codex" are back to normal.'));
   } else {
     done.forEach((f) => log(ok(shortPath(f))));
     if (!quiet) tutorial(true);
@@ -2240,7 +2269,9 @@ async function uninstallAll({ yes = false, list = targets() } = {}) {
   const had = hasShortcut(list);
   const r = install(true, list, true);
   if (had && r.done.length) ok(T.unShortcutOff); else note(T.unNoShortcut);
-  for (const f of [CFG_FILE, CACHE_FILE, CACHE_FILE + '.tmp']) { try { fs.rmSync(f, { force: true }); } catch { /* */ } }
+  const dataFiles = [CFG_FILE, CACHE_FILE, CACHE_FILE + '.tmp'];
+  if (!process.env.HOPDECK_CONFIG) dataFiles.push(path.join(os.homedir(), '.hopdeck.json'), path.join(os.homedir(), '.hopdeck-codex.json'));
+  for (const f of new Set(dataFiles)) { try { fs.rmSync(f, { force: true }); } catch { /* */ } }
   ok(T.unData);
   if (process.env.HOPDECK_NO_NPM) { note(T.unSkipNpm); console.log(`\n  ${C.dim}${T.unDone}${R}`); return 0; }
   const res = cp.spawnSync('npm uninstall -g hopdeck', { shell: true, stdio: 'inherit' }); // comando fijo, sin datos de fuera
@@ -2335,6 +2366,9 @@ function tutorial(afterInstall) {
     `${d}claude with arguments (claude -p "...", claude --resume) works as usual.${R}`,
     `${d}Remove the shortcut: hopdeck shortcut off · Uninstall everything: hopdeck uninstall${R}`,
   ];
+  if (provider.isCodex) for (let i = 0; i < L.length; i++) L[i] = L[i].replace(/Claude/g, 'Codex').replace(/claude --resume/g, 'codex resume').replace(/claude -p/g, 'codex exec').replace(/\bclaude\b/g, 'codex');
+  L.push('', LANG === 'es' ? `${d}claude → Hopdeck Claude · codex → Hopdeck Codex (con los atajos instalados).${R}` : `${d}claude → Hopdeck Claude · codex → Hopdeck Codex (with shortcuts installed).${R}`);
+  L.push(`${d}hopdeck --provider claude | hopdeck --provider codex${R}`);
   console.log('\n' + L.map((x) => '  ' + x).join('\n') + '\n');
 }
 
@@ -2358,7 +2392,7 @@ function suggestCommand(word) {
 const OWN_FLAGS = ['--help', '-h', '--version', '-v', '--list', '--idle', '--frame', '--sidebar'];
 
 function main() {
-  const [cmd, ...rest] = process.argv.slice(2);
+  const [cmd, ...rest] = provider.args;
   // una palabra suelta, o una opción con guiones que se parece a un comando (--uninstall, --unistall…), es una errata: no se abre
   // Hopdeck ni se le pasa nada a claude
   if (cmd && !commandName(cmd) && !OWN_FLAGS.includes(cmd) && (!cmd.startsWith('-') || suggestCommand(cmd))) {
@@ -2405,11 +2439,14 @@ function main() {
     else console.log(frame(c, r).join('\n'));
   } else {
     extraArgs.push(...[cmd, ...rest].filter((a) => a && a !== '--sidebar'));
-    run().catch((e) => { try { leave(); } catch { /* */ } console.error(e); process.exit(1); });
+    run().catch((e) => { codexHistory.close(); try { leave(); } catch { /* */ } console.error(e.message); process.exit(1); });
   }
 }
 
-if (require.main === module) main();
+if (require.main === module) {
+  process.on('exit', () => codexHistory.close());
+  try { main(); } catch (err) { console.error(err.message); process.exitCode = 1; }
+}
 else {
   // al hacer require() (pruebas automáticas) no se ejecuta nada: solo se exponen las piezas puras
   module.exports = {
