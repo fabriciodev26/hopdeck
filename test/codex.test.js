@@ -99,6 +99,27 @@ test('Codex history: old protocol fallback, RPC errors, timeout and child exit',
   }
 });
 
+test('Windows Codex shutdown stops the server behind an npm batch shim', { skip: process.platform !== 'win32', timeout: 20000 }, async () => {
+  const shim = path.join(root, 'codex-rpc.cmd'), pidFile = path.join(root, 'rpc-server.pid');
+  fs.writeFileSync(shim, `@echo off\r\n"${process.execPath}" "${fake}" %*\r\n`);
+  process.env.FAKE_RPC_PID_FILE = pidFile;
+  process.env.FAKE_RPC_KEEPALIVE = '1';
+  const client = new CodexClient({ bin: shim });
+  let pid;
+  const alive = () => { if (!pid) return false; try { process.kill(pid, 0); return true; } catch { return false; } };
+  try {
+    await listProjects(client);
+    pid = Number(fs.readFileSync(pidFile, 'utf8'));
+    assert.ok(Number.isInteger(pid) && pid > 0 && alive(), 'the owned server is running behind cmd.exe');
+    client.close();
+    for (let i = 0; i < 60 && alive(); i++) await new Promise((resolve) => setTimeout(resolve, 50));
+    assert.equal(alive(), false, 'closing the client also stops its grandchild server');
+  } finally {
+    client.close(); delete process.env.FAKE_RPC_PID_FILE; delete process.env.FAKE_RPC_KEEPALIVE;
+    if (alive()) cp.spawnSync('taskkill.exe', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true, timeout: 5000 });
+  }
+});
+
 test('shortcuts: both providers installed once with a backup and removable block', () => {
   const hd = require('../bin/hopdeck');
   for (const kind of ['posix', 'fish', 'pwsh']) {

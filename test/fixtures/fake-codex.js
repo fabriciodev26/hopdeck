@@ -4,6 +4,8 @@ const args = process.argv.slice(2);
 const file = process.env.HOPDECK_FAKE_THREADS;
 const read = () => JSON.parse(fs.readFileSync(file, 'utf8'));
 if (args[0] === 'app-server') {
+  if (process.env.FAKE_RPC_PID_FILE) fs.writeFileSync(process.env.FAKE_RPC_PID_FILE, String(process.pid));
+  if (process.env.FAKE_RPC_KEEPALIVE) setInterval(() => {}, 1000);
   const rl = require('readline').createInterface({ input: process.stdin });
   rl.on('line', (line) => {
     const { id, method, params } = JSON.parse(line);
