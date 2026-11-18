@@ -23,6 +23,8 @@ The project list stays on the left and the conversation on the right.
 
 With shortcuts installed, `claude` opens Hopdeck for Claude Code and `codex` opens it for Codex CLI. Each mode has its own history and preferences. Commands with arguments (`claude -p ...`, `codex exec ...`, `codex resume ...`) still run the original CLI directly.
 
+Codex mode shows only conversations identified as originating from Codex CLI, the Codex app or its extension. Work sessions (`codex_work_desktop`) and unknown origins are excluded, including when they share a project directory with Codex sessions. Directory names are not used to determine origin.
+
 ```bash
 hopdeck --provider claude
 hopdeck --provider codex

@@ -23,6 +23,8 @@ La lista de proyectos queda a la izquierda y la conversación a la derecha.
 
 Con los atajos instalados, `claude` abre Hopdeck con Claude Code y `codex` lo abre con Codex CLI. Cada modo muestra su propio historial y recuerda sus propias preferencias. Los comandos con argumentos (`claude -p ...`, `codex exec ...`, `codex resume ...`) siguen ejecutando directamente su CLI.
 
+El modo Codex muestra exclusivamente conversaciones identificadas como creadas con Codex CLI, la aplicación de Codex o su extensión. Excluye las sesiones de Work (`codex_work_desktop`) y las de origen desconocido, aunque compartan carpeta con un proyecto de Codex. Los nombres de las carpetas no se usan para decidir el origen.
+
 ```bash
 hopdeck --provider claude
 hopdeck --provider codex

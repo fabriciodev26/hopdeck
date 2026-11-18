@@ -30,7 +30,7 @@ if (args[0] === 'app-server') {
   if (process.env.FAKE_LAUNCH_LOG) fs.appendFileSync(process.env.FAKE_LAUNCH_LOG, JSON.stringify({ args, cwd: process.cwd() }) + '\n');
   if (file && args[0] !== 'resume') {
     const all = read();
-    all.unshift({ id: 'new-codex-session', name: 'Nuevo chat Codex', preview: 'Chat recién creado', cwd: process.cwd(), updatedAt: Date.now() / 1000 });
+    all.unshift({ id: 'new-codex-session', name: 'Nuevo chat Codex', preview: 'Chat recién creado', cwd: process.cwd(), updatedAt: Date.now() / 1000, source: 'cli', originator: 'codex_cli_rs' });
     fs.writeFileSync(file, JSON.stringify(all));
   }
   process.stdout.write('FAKE CODEX args=' + args.join(' ') + '\r\n> ');
