@@ -1,5 +1,10 @@
 # Cambios
 
+## 1.5.2
+
+### Arreglado
+- En Windows, al salir de Hopdeck se detienen los chats abiertos en el terminal integrado, evitando que procesos de Codex queden ejecutándose.
+
 ## 1.5.1
 
 ### Arreglado
