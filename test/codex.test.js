@@ -206,8 +206,12 @@ test('Codex embedded terminal: preview, resume, input, new chat and two live ses
     assert.deepEqual(launches[0].args, ['resume', 'codex-one', '--model', 'test-model']);
     assert.deepEqual(launches[1].args, ['--model', 'test-model']);
     for (const launch of launches) assert.equal(path.resolve(launch.cwd).toLowerCase(), path.resolve(cwd).toLowerCase(), JSON.stringify(launch));
+    const alive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
+    for (const { pid } of launches) assert.ok(alive(pid), 'both chats are running before quitting');
     h.write('\x1bOP'); await h.waitFor(/\[n\] nueva/, 'list focus before quitting'); h.write('q');
     for (let i = 0; i < 200 && !h.exited; i++) await h.sleep(50);
     assert.ok(h.exited, 'clean exit');
+    for (let i = 0; i < 60 && launches.some(({ pid }) => alive(pid)); i++) await h.sleep(50);
+    for (const { pid } of launches) assert.equal(alive(pid), false, 'quitting stops both chat processes');
   } finally { await h.close(); }
 });

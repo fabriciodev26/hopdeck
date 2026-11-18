@@ -29,7 +29,7 @@ if (args[0] === 'app-server') {
     console.log(JSON.stringify({ id, result }));
   });
 } else {
-  if (process.env.FAKE_LAUNCH_LOG) fs.appendFileSync(process.env.FAKE_LAUNCH_LOG, JSON.stringify({ args, cwd: process.cwd() }) + '\n');
+  if (process.env.FAKE_LAUNCH_LOG) fs.appendFileSync(process.env.FAKE_LAUNCH_LOG, JSON.stringify({ args, cwd: process.cwd(), pid: process.pid }) + '\n');
   if (file && args[0] !== 'resume') {
     const all = read();
     all.unshift({ id: 'new-codex-session', name: 'Nuevo chat Codex', preview: 'Chat recién creado', cwd: process.cwd(), updatedAt: Date.now() / 1000, source: 'cli', originator: 'codex_cli_rs' });

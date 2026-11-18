@@ -1867,7 +1867,21 @@ function embedResize() {
   render();
 }
 
-function embedKillAll() { for (const sess of E.sessions.values()) { try { sess.p.kill(); } catch { /* */ } } }
+function embedKillAll() {
+  if (WIN) {
+    // node-pty enumerates console processes asynchronously before killing them. quit()
+    // exits immediately, so that enumeration may never finish and leave ConPTY open.
+    // Stop all owned process trees before releasing the PTYs and exiting the hub.
+    const pids = [...E.sessions.values()].map((sess) => sess.p.pid).filter((pid) => Number.isInteger(pid) && pid > 0);
+    if (pids.length) {
+      try {
+        cp.spawnSync('taskkill.exe', [...pids.flatMap((pid) => ['/PID', String(pid)]), '/T', '/F'],
+          { stdio: 'ignore', windowsHide: true, timeout: 5000 });
+      } catch { /* still release the PTYs below */ }
+    }
+  }
+  for (const sess of E.sessions.values()) { try { sess.p.kill(); } catch { /* */ } }
+}
 
 // Redibujado diferencial: solo se reescriben las filas que cambiaron desde el último cuadro.
 let lastRows = [], forceFull = true;
