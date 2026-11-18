@@ -1,6 +1,12 @@
 # Cambios
 
-## Sin publicar
+## 1.5.1
+
+### Arreglado
+- El historial de Codex se filtra por cliente de origen: solo Codex CLI, la aplicación de Codex y su extensión. Se excluyen las sesiones de Work y los orígenes desconocidos antes de agrupar proyectos, contar conversaciones o buscar.
+- En Windows, al cerrar Hopdeck también se detiene el servidor de historial que inicia el lanzador npm de Codex, evitando que su proceso auxiliar mantenga abierto el terminal.
+
+## 1.5.0
 
 ### Nuevo
 - Primer soporte para Codex CLI: `hopdeck --provider codex`, proyectos y conversaciones mediante `codex app-server`, vistas previas, chats nuevos y reanudados con `codex resume`, y varios chats abiertos en el panel integrado.

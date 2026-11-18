@@ -6,15 +6,20 @@ const path = require('path');
 const cp = require('child_process');
 const { tmp, launchHub } = require('./helpers');
 const { parseProvider } = require('../lib/provider');
-const { CodexClient, listProjects, preview, groupThreads } = require('../lib/codex-history');
+const { CodexClient, isCodexThread, listProjects, preview, groupThreads } = require('../lib/codex-history');
 const root = tmp('hopdeck-codex-');
 const cwd = path.join(root, 'project with spaces'); fs.mkdirSync(cwd);
 const threads = path.join(root, 'threads.json');
 const data = [
-  { id: 'codex-one', name: 'Sesión Codex uno', preview: 'Primera pregunta', cwd, updatedAt: 1700000000 },
-  { id: 'codex-two', preview: 'Segunda pregunta', cwd, updatedAt: 1700000001 },
+  { id: 'codex-one', name: 'Sesión Codex uno', preview: 'Primera pregunta', cwd, updatedAt: 1700000000, source: 'cli', originator: 'codex_cli_rs' },
+  { id: 'codex-two', preview: 'Segunda pregunta', cwd, updatedAt: 1700000001, source: 'vscode', originator: 'Codex Desktop' },
 ];
-fs.writeFileSync(threads, JSON.stringify(data));
+const mixedData = [
+  { id: 'work-only', name: 'Work conversation', cwd: path.join(root, 'work-only-project'), updatedAt: 1900000000, source: 'vscode', originator: 'codex_work_desktop' },
+  ...data,
+  { ...data[0], id: 'work-shared-directory', name: 'Work in a real repository', originator: 'codex_work_desktop', source: 'vscode' },
+];
+fs.writeFileSync(threads, JSON.stringify(mixedData));
 process.env.HOPDECK_FAKE_THREADS = threads;
 const fake = path.join(__dirname, 'fixtures', 'fake-codex.js');
 const makeClient = (timeout) => new CodexClient({ bin: process.execPath, args: [fake, 'app-server'], timeout });
@@ -26,6 +31,31 @@ test('provider: explicit CLI option wins; invalid selection fails', () => {
   assert.throws(() => parseProvider([], 'other'), /Usage/);
 });
 
+test('Codex origins: include native Codex clients and exclude Work, unknown clients and subagents', () => {
+  for (const thread of [
+    { source: 'cli', originator: 'codex_cli_rs' },
+    { source: 'cli' },
+    { source: 'cli', originator: null },
+    { source: 'vscode', originator: 'codex_vscode' },
+    { source: 'vscode', originator: 'Codex Desktop' },
+    { source: 'appServer', originator: 'Codex Desktop' },
+  ]) assert.equal(isCodexThread(thread), true, JSON.stringify(thread));
+  for (const thread of [
+    { source: 'vscode', originator: 'codex_work_desktop' },
+    { source: 'cli', originator: 'codex_work_desktop' },
+    { source: 'vscode' },
+    { source: 'appServer', originator: 'another-client' },
+    { source: 'cli', originator: 'another-client' },
+    { source: 'exec', originator: 'codex_cli_rs' },
+    { source: 'unknown', originator: 'Codex Desktop' },
+    { source: { subAgent: 'review' }, originator: 'codex_cli_rs' },
+    {}, null,
+  ]) assert.equal(isCodexThread(thread), false, JSON.stringify(thread));
+  const grouped = groupThreads(mixedData);
+  assert.equal(grouped.length, 1, 'Work-only directories do not become projects');
+  assert.deepEqual(grouped[0].sessions.map((s) => s.id), ['codex-two', 'codex-one'], 'Work is excluded even in the same repository');
+});
+
 test('Codex history: initialize, paginate, group by cwd and preview item entries', async () => {
   const client = makeClient();
   try {
@@ -35,6 +65,7 @@ test('Codex history: initialize, paginate, group by cwd and preview item entries
     assert.deepEqual(projects[0].sessions.map((s) => s.id), ['codex-two', 'codex-one']);
     assert.equal(projects[0].sessions[0].title, 'Segunda pregunta');
     assert.equal(projects[0].sessions[1].title, 'Sesión Codex uno');
+    assert.ok(projects[0].sessions.every((s) => s.originator !== 'codex_work_desktop'), 'pagination continues after an excluded first page');
     const messages = await preview(client, projects[0].sessions[0]);
     assert.deepEqual(messages.map((m) => m.role), ['user', 'assistant']);
     assert.match(messages[1].text, /Respuesta de Codex/);
@@ -65,6 +96,27 @@ test('Codex history: old protocol fallback, RPC errors, timeout and child exit',
       if (mode === 'legacy') assert.equal((await preview(client, data[0]))[0].text, 'Respuesta antigua');
       else await assert.rejects(listProjects(client), mode === 'error' ? /History unavailable/ : mode === 'timeout' ? /timed out/ : /exited/);
     } finally { client.close(); delete process.env.FAKE_RPC; }
+  }
+});
+
+test('Windows Codex shutdown stops the server behind an npm batch shim', { skip: process.platform !== 'win32', timeout: 20000 }, async () => {
+  const shim = path.join(root, 'codex-rpc.cmd'), pidFile = path.join(root, 'rpc-server.pid');
+  fs.writeFileSync(shim, `@echo off\r\n"${process.execPath}" "${fake}" %*\r\n`);
+  process.env.FAKE_RPC_PID_FILE = pidFile;
+  process.env.FAKE_RPC_KEEPALIVE = '1';
+  const client = new CodexClient({ bin: shim });
+  let pid;
+  const alive = () => { if (!pid) return false; try { process.kill(pid, 0); return true; } catch { return false; } };
+  try {
+    await listProjects(client);
+    pid = Number(fs.readFileSync(pidFile, 'utf8'));
+    assert.ok(Number.isInteger(pid) && pid > 0 && alive(), 'the owned server is running behind cmd.exe');
+    client.close();
+    for (let i = 0; i < 60 && alive(); i++) await new Promise((resolve) => setTimeout(resolve, 50));
+    assert.equal(alive(), false, 'closing the client also stops its grandchild server');
+  } finally {
+    client.close(); delete process.env.FAKE_RPC_PID_FILE; delete process.env.FAKE_RPC_KEEPALIVE;
+    if (alive()) cp.spawnSync('taskkill.exe', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true, timeout: 5000 });
   }
 });
 
@@ -136,7 +188,9 @@ test('Codex embedded terminal: preview, resume, input, new chat and two live ses
   try {
     await h.waitFor(/Hopdeck/, 'hub');
     await h.waitFor(/project with spaces/, 'Codex project');
+    assert.doesNotMatch(h.screen(), /work-only-project/, 'Work projects are not shown');
     h.write('\x10'); await h.waitFor(/⌕/, 'quick switch');
+    assert.doesNotMatch(h.screen(), /Work conversation|Work in a real repository/, 'Work chats are not included in quick switch');
     h.write('uno'); await h.waitFor(/Sesión Codex uno/, 'session');
     h.write('\r'); await h.waitFor(/FAKE CODEX/, 'resumed Codex');
     await h.waitFor(/args=resume codex-one --model test-model/, 'resume arguments');

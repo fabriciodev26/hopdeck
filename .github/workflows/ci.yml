@@ -22,7 +22,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         node: [22, 24] # Node 22 es el mínimo: en Windows, Node 18 y 20 no entregan los eventos de ratón
-    runs-on: ${{ matrix.os }}
+    # The macOS ARM pool has failed to allocate runners. Use the same macOS generation on Intel.
+    # Keep the matrix labels stable because these check names are required by the main branch.
+    runs-on: ${{ matrix.os == 'macos-latest' && 'macos-26-intel' || matrix.os }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
