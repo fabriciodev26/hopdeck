@@ -30,7 +30,14 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - run: npm install --no-audit --no-fund
-      - run: npm test
+      - name: Pruebas y diagnóstico
+        shell: bash
+        run: |
+          set +e
+          npm test 2>&1 | tee test-results.log
+          test_status=${PIPESTATUS[0]}
+          node scripts/report-test-results.js "$test_status"
+          exit "$test_status"
 
   audit:
     name: audit y paquete
