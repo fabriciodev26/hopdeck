@@ -1,6 +1,6 @@
 # Cambios
 
-## Sin publicar
+## 1.5.1
 
 ### Arreglado
 - El historial de Codex se filtra por cliente de origen: solo Codex CLI, la aplicación de Codex y su extensión. Se excluyen las sesiones de Work y los orígenes desconocidos antes de agrupar proyectos, contar conversaciones o buscar.
