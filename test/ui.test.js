@@ -531,6 +531,16 @@ test('seleccionar en el chat no copia solo: se copia con Ctrl+C o con el clic de
     assert.equal(copiado(log).length, 1, 'tampoco se copió sola esta vez');
     h.mouse(2, 48, y); h.mouse(2, 48, y, 'm');
     await h.sleep(500); assert.equal(copiado(log).length, 2, 'el clic derecho copia');
+    await arrastrar();
+    h.write('\x1b[99;9u'); // Command+C reenviado por el terminal (CSI u)
+    if (process.platform === 'darwin') {
+      await esperarCopias(h, log, 3);
+      assert.equal(copiado(log)[2], copiado(log)[0], 'Command+C copia el mismo texto en macOS');
+      await h.waitFor(/Copiado/, 'confirma la copia con Command+C');
+    } else {
+      await h.sleep(300);
+      assert.equal(copiado(log).length, 2, 'Command+C no se convierte en copiar en Windows/Linux');
+    }
   } finally { await h.close(); }
 });
 

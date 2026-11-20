@@ -189,6 +189,19 @@ test('teclado: parseKeys', () => {
   assert.equal(hd.KEYMAP['\x1b[A'], 'up');
 });
 
+test('copy shortcut: Command+C is macOS-only and Control+C remains compatible', () => {
+  const { isCopyKey } = require('../lib/keys');
+  for (const platform of ['darwin', 'linux', 'win32']) {
+    assert.equal(isCopyKey('\x03', platform), true, platform + ': Control+C');
+    for (const key of ['\x1b[99;9u', '\x1b[99;9:1u', '\x1b[99;9:2u', '\x1b[67;73u', '\x1b[99:67;137u']) {
+      assert.equal(isCopyKey(key, platform), platform === 'darwin', platform + ': ' + JSON.stringify(key));
+    }
+    for (const key of ['c', 'C', '\x1bc', '\x1b[99;3u', '\x1b[99;5u', '\x1b[99;10u', '\x1b[99;13u', '\x1b[100;9u', '\x1b[99;9:3u', '\x1b[99;0u', '\x1b[99;999u']) {
+      assert.equal(isCopyKey(key, platform), false, platform + ': unrelated key ' + JSON.stringify(key));
+    }
+  }
+});
+
 test('atajo del shell: bloque idempotente y reversible', () => {
   const base = 'export A=1\n';
   const once = base + '\n' + hd.SNIP.posix;
