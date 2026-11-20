@@ -598,10 +598,12 @@ test('indicador de trabajo: mientras el chat muestra «esc to interrupt» sale e
     h.write('HOPDECK_TEST_START_BUSY\r');
     await h.waitFor(/esc to interrupt/, 'el chat empieza a generar');
     h.write('\x1bOP');
+    await h.waitFor(/\[Ctrl\+P\] saltar/, 'F1 termina de cambiar el foco a la lista');
     let visto = false; const t0 = Date.now();
     while (Date.now() - t0 < 3500 && !visto) { visto = SPIN.test(listaIzq(h)); if (!visto) await h.sleep(100); }
     assert.ok(visto, 'el spinner aparece mientras trabaja');
     h.write('\x1bOQ');
+    await h.waitFor(/\[F1\] lista/, 'F2 termina de cambiar el foco al chat antes de enviar la orden');
     h.write('HOPDECK_TEST_STOP_BUSY\r');
     await h.waitFor(/listo/, 'termina de generar', 8000);
     const t1 = Date.now(); let aun = true;
