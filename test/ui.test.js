@@ -24,7 +24,8 @@ test('selector de carpetas: navegar, ocultas, filtro, cursor al escribir y crear
     await h.waitFor(/alpha/, 'lista de proyectos');
     h.write('o');
     await h.waitFor(/Elegir carpeta/, 'selector abierto');
-    await h.waitFor(/Documentos/, 'carpetas de ~'); assert.match(h.screen(), /Proyectos/);
+    await h.waitFor(/Documentos/, 'carpetas de ~');
+    await h.waitFor(/Proyectos/, 'termina de dibujar las carpetas de ~');
     assert.doesNotMatch(h.screen(), /\.oculta/, 'las carpetas ocultas no se muestran');
     h.write('.'); await h.waitFor(/\.oculta/, 'con "." se muestran las ocultas');
     h.write('.'); await h.waitGone(/\.oculta/, 'otro "." las oculta');
@@ -531,6 +532,16 @@ test('seleccionar en el chat no copia solo: se copia con Ctrl+C o con el clic de
     assert.equal(copiado(log).length, 1, 'tampoco se copió sola esta vez');
     h.mouse(2, 48, y); h.mouse(2, 48, y, 'm');
     await h.sleep(500); assert.equal(copiado(log).length, 2, 'el clic derecho copia');
+    await arrastrar();
+    h.write('\x1b[99;9u'); // Command+C reenviado por el terminal (CSI u)
+    if (process.platform === 'darwin') {
+      await esperarCopias(h, log, 3);
+      assert.equal(copiado(log)[2], copiado(log)[0], 'Command+C copia el mismo texto en macOS');
+      await h.waitFor(/Copiado/, 'confirma la copia con Command+C');
+    } else {
+      await h.sleep(300);
+      assert.equal(copiado(log).length, 2, 'Command+C no se convierte en copiar en Windows/Linux');
+    }
   } finally { await h.close(); }
 });
 
@@ -584,10 +595,14 @@ test('indicador de trabajo: mientras el chat muestra «esc to interrupt» sale e
     await h.waitFor(/Sesión dos/, 'lista');
     const uno = h.find('Sesión uno'); h.mouse(0, 5, uno.y); h.mouse(0, 5, uno.y, 'm');
     await h.waitFor(/FAKE CLAUDE/, 'chat abierto');
+    h.write('HOPDECK_TEST_START_BUSY\r');
+    await h.waitFor(/esc to interrupt/, 'el chat empieza a generar');
     h.write('\x1bOP');
     let visto = false; const t0 = Date.now();
     while (Date.now() - t0 < 3500 && !visto) { visto = SPIN.test(listaIzq(h)); if (!visto) await h.sleep(100); }
     assert.ok(visto, 'el spinner aparece mientras trabaja');
+    h.write('\x1bOQ');
+    h.write('HOPDECK_TEST_STOP_BUSY\r');
     await h.waitFor(/listo/, 'termina de generar', 8000);
     const t1 = Date.now(); let aun = true;
     while (Date.now() - t1 < 5000 && aun) { aun = SPIN.test(listaIzq(h)); if (aun) await h.sleep(100); }

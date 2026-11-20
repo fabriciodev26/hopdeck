@@ -200,6 +200,14 @@ It refreshes itself every few seconds and never modifies the repository. It need
 - **Scroll** the chat with the mouse wheel or `PgUp` / `PgDn`; `End` or typing returns you to the bottom.
 - **Select and copy:** drag with the mouse over the chat to mark text; it is not copied by itself. Copy it with `Ctrl+C` or right click, and clear the selection with `Esc` or by clicking elsewhere. If you drag to the top or bottom edge the chat scrolls on its own and the selection follows, so you can mark far more than fits on screen. For the old behaviour (copy on release) set `"copyOnSelect": true` in `~/.hopdeck.json`. `F3` turns the mouse off if you prefer terminal selection (or use `Shift`+drag).
 
+**Command+C on macOS:** Hopdeck also recognizes `⌘C` on its selection when the terminal sends `ESC [99;9u` (CSI u). The terminal's native Copy shortcut may intercept it; supporting CSI u does not mean a terminal forwards `⌘C` by default. Hopdeck does not change your keybindings or copy automatically when you select text.
+
+- **iTerm2:** in a profile dedicated to Hopdeck, open **Settings → Profiles → Keys → Key Mappings**, add `⌘C`, choose **Send Escape Sequence**, and enter `[99;9u` (without typing `ESC`). This forwards the shortcut to Hopdeck. [iTerm2 reference](https://iterm2.com/documentation-preferences-profiles-keys.html).
+- **Ghostty:** in a configuration dedicated to Hopdeck, use `keybind = super+c=csi:99;9u`. This overrides native Copy while that configuration is in use. [Ghostty action reference](https://ghostty.org/docs/config/keybind/reference).
+- **Apple Terminal, or without configuring keybindings:** press `F3` (or `Fn+F3`) to turn off Hopdeck's mouse, select text using the terminal itself, and press `⌘C`. Press `F3` again to restore Hopdeck's mouse. This copies the terminal's selection, rather than the chat's internal selection.
+
+`Ctrl+C` and right click still copy the internal selection on macOS. Without an internal selection, `Ctrl+C` is forwarded to the chat to interrupt it. Windows and Linux keep their existing shortcuts.
+
 ### More
 
 - The project's **git branch** is shown and the list refreshes itself.

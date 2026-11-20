@@ -28,7 +28,7 @@ const { encodeSixel } = require('../lib/sixel');
 const gitlib = require('../lib/git');
 const deepsearch = require('../lib/deepsearch');
 const { collectImages, decodePNG, decodeImage, scaleBox, fitSize, halfBlocks } = images;
-const { parseKeys, KEYMAP, printable, editBuf, normalizeKeys } = require('../lib/keys');
+const { parseKeys, KEYMAP, printable, editBuf, normalizeKeys, isCopyKey } = require('../lib/keys');
 const { stripJsonc, wtCtrlV, wtSettingsFile } = require('../lib/windows-terminal');
 
 let VERSION = '0.0.0';
@@ -1603,7 +1603,7 @@ function selText(sh, sl) {
   }
   return out.join('\n').replace(/\s+$/, '');
 }
-/** Copia la selección marcada y la quita. Solo se llama cuando el usuario lo pide (Ctrl+C, clic derecho), o con "copyOnSelect". */
+/** Copia la selección marcada y la quita. Solo por atajo de copia, clic derecho o "copyOnSelect". */
 function copySelection(sh) {
   const sl = E.sel; E.sel = null; stopSelScroll();
   const t = sl && sh ? selText(sh, sl) : '';
@@ -1767,8 +1767,8 @@ function hasContent(term) {
 }
 
 function embedInput(s) {
-  if (E.sel && !E.sel.down) { // hay texto seleccionado: Ctrl+C lo copia y Esc lo quita, sin llegar a Claude (Esc le interrumpiría)
-    if (s === '\x03') { copySelection(E.sessions.get(E.shown)); return render(); }
+  if (E.sel && !E.sel.down) { // copiar/Esc actúan sobre la selección sin llegar al chat
+    if (isCopyKey(s)) { copySelection(E.sessions.get(E.shown)); return render(); }
     if (s === '\x1b') { E.sel = null; E.note = null; return render(); }
   }
   stopSelScroll(); E.sel = null; E.hover = null;

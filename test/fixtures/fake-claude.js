@@ -4,6 +4,7 @@ if (mode === 'alt') process.stdout.write('\x1b[?1049h\x1b[2J\x1b[HALT SCREEN\r\n
 if (mode === 'mouse') process.stdout.write('\x1b[?1000h\x1b[?1006h'); // Claude captura el ratón
 process.stdout.write((process.env.FAKE_BANNER ? '\x1b[1m' : '\x1b[1;38;2;217;119;87m') + (process.env.FAKE_BANNER || '» FAKE CLAUDE') + '\x1b[0m' + (process.env.FAKE_BANNER ? '' : ' args=' + process.argv.slice(2).join(' ')) + '\n> '); // con FAKE_BANNER (capturas del README) no se muestran los argumentos
 let buf = '';
+let busyTimer = null;
 process.stdin.setEncoding('utf8');
 process.stdin.on('data', (d) => {
   buf += d;
@@ -11,6 +12,15 @@ process.stdin.on('data', (d) => {
   while ((i = buf.search(/[\r\n]/)) >= 0) {
     const line = buf.slice(0, i); buf = buf.slice(i + 1);
     if (line.trim() === '/exit') process.exit(0);
+    if (process.env.FAKE_BUSY && line === 'HOPDECK_TEST_START_BUSY') {
+      if (!busyTimer) busyTimer = setInterval(() => process.stdout.write('\r\n✻ Pensando… (esc to interrupt) ' + Date.now() % 1000), 300);
+      continue;
+    }
+    if (process.env.FAKE_BUSY && line === 'HOPDECK_TEST_STOP_BUSY') {
+      clearInterval(busyTimer); busyTimer = null;
+      process.stdout.write('\x1b[2J\x1b[Hlisto\r\n> ');
+      continue;
+    }
     if (line) process.stdout.write('\r\neco: ' + line + '\r\n> ');
   }
 });
@@ -18,11 +28,7 @@ process.stdin.on('data', (d) => {
 if (process.env.FAKE_PRINT) process.stdout.write('\r\n' + process.env.FAKE_PRINT + '\r\n> ');
 // FAKE_NOISE: escribe algo cada 300 ms sin estar trabajando (como una barra de estado que se actualiza).
 if (process.env.FAKE_NOISE) setInterval(() => process.stdout.write('\x1b7\x1b[1;1Hreloj ' + Date.now() % 100000 + '\x1b8'), 300);
-// FAKE_BUSY: durante 4 s muestra «esc to interrupt» y escribe sin parar, como Claude generando una respuesta.
-if (process.env.FAKE_BUSY) {
-  const t = setInterval(() => process.stdout.write('\r\n✻ Pensando… (esc to interrupt) ' + Date.now() % 1000), 300);
-  setTimeout(() => { clearInterval(t); process.stdout.write('\x1b[2J\x1b[Hlisto\r\n> '); }, 4000);
-}
+// FAKE_BUSY starts/stops on explicit test input so scheduling cannot hide the busy phase.
 if (mode === 'mouse' || mode === 'alt') { // entrada cruda: responde a la rueda y a las flechas
   try { process.stdin.setRawMode(true); } catch { /* sin TTY */ }
   const say = (x) => process.stdout.write('\r\n' + x + '\r\n');

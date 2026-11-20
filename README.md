@@ -200,6 +200,14 @@ Se refresca solo cada pocos segundos y no modifica nada en el repositorio. Neces
 - **Scroll** en el chat: rueda del ratón o `PgUp` / `PgDn`; `End` o escribir algo te devuelve al final.
 - **Seleccionar y copiar:** arrastra con el ratón sobre el chat para marcar texto; no se copia solo. Cópialo con `Ctrl+C` o con el clic derecho, y quita la selección con `Esc` o haciendo clic en otro sitio. Si arrastras hasta el borde de arriba o de abajo, el chat se desplaza solo y la selección sigue, así que puedes marcar mucho más de lo que cabe en pantalla. Si prefieres el comportamiento anterior (copiar al soltar), pon `"copyOnSelect": true` en `~/.hopdeck.json`. `F3` apaga el ratón si prefieres seleccionar con el terminal (o usa `Shift`+arrastrar).
 
+**Command+C en macOS:** Hopdeck también reconoce `⌘C` sobre su selección cuando la terminal envía la secuencia `ESC [99;9u` (CSI u). El atajo nativo de copiar de la terminal puede interceptarlo; que una terminal soporte CSI u no significa que reenvíe `⌘C` por defecto. Hopdeck no cambia tus atajos ni copia automáticamente al seleccionar.
+
+- **iTerm2:** en un perfil dedicado a Hopdeck, abre **Settings → Profiles → Keys → Key Mappings**, añade `⌘C`, elige **Send Escape Sequence** y escribe `[99;9u` (sin escribir `ESC`). Así el atajo llega a Hopdeck. [Referencia de iTerm2](https://iterm2.com/documentation-preferences-profiles-keys.html).
+- **Ghostty:** en una configuración dedicada a Hopdeck, usa `keybind = super+c=csi:99;9u`. Esta asignación sustituye el comando de copia nativo mientras uses esa configuración. [Referencia de acciones de Ghostty](https://ghostty.org/docs/config/keybind/reference).
+- **Terminal de Apple, o sin configurar atajos:** pulsa `F3` (o `Fn+F3`) para desactivar el ratón de Hopdeck, selecciona con la propia terminal y usa `⌘C`. Vuelve a pulsar `F3` para recuperar el ratón de Hopdeck. En este modo se copia la selección de la terminal, no la selección interna del chat.
+
+`Ctrl+C` y el clic derecho siguen copiando la selección interna en macOS. Sin selección interna, `Ctrl+C` se envía al chat para interrumpirlo. En Windows y Linux se conservan los atajos actuales.
+
 ### Otros detalles
 
 - Se muestra la **rama de git** del proyecto y la lista se refresca sola.
