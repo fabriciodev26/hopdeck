@@ -202,6 +202,43 @@ test('copy shortcut: Command+C is macOS-only and Control+C remains compatible', 
   }
 });
 
+test('welcome: localized, aligned and compact in a small terminal', () => {
+  const { renderWelcome } = require('../lib/welcome');
+  const text = renderWelcome({ lang: 'es' });
+  assert.match(text, /Bienvenido a Hopdeck/);
+  assert.match(text, /hopdeck --provider codex/);
+  assert.match(text, /ATAJOS OPCIONALES/);
+  assert.doesNotMatch(text, /\x1b/);
+  assert.match(renderWelcome({ lang: 'en', color: true }), /\x1b\[/);
+  assert.match(renderWelcome({ lang: 'en' }), /Welcome to Hopdeck/);
+  assert.doesNotMatch(renderWelcome({ lang: 'es', columns: 40 }), /[╭╰│]/, 'small terminals use a compact layout');
+  const lines = text.trimEnd().split('\n').slice(1);
+  assert.ok(lines.every(line => [...line].length === 56), 'the box and all its rows align');
+});
+
+test('welcome: acknowledge once, honor NO_COLOR and skip automation', async () => {
+  const { showWelcome } = require('../lib/welcome');
+  const config = {}; let text = '', saves = 0, waits = 0;
+  const options = { config, lang: 'es', env: { NO_COLOR: '1', FORCE_COLOR: '1' }, input: { isTTY: true },
+    output: { isTTY: true, columns: 80, write: s => { text += s; } },
+    save: () => { saves++; }, wait: async () => { assert.equal(config.welcomeSeen, undefined, 'not saved before acknowledgement'); waits++; } };
+  assert.equal(await showWelcome(options), true);
+  assert.equal(config.welcomeSeen, true);
+  assert.match(text, /Enter para empezar/);
+  assert.doesNotMatch(text, /\x1b\[[0-9;]*m/, 'NO_COLOR takes precedence over color requests');
+  const previous = text;
+  assert.equal(await showWelcome(options), false);
+  assert.equal(text, previous, 'does not reappear');
+  assert.equal(saves, 1); assert.equal(waits, 1);
+  for (const extra of [{ env: { CI: 'true' } }, { env: { HOPDECK_NOPROMPT: '1' } }, { input: { isTTY: false } }, { output: { isTTY: false } }]) {
+    assert.equal(await showWelcome({ ...options, config: {}, ...extra }), false);
+  }
+  const interrupted = {};
+  await assert.rejects(showWelcome({ ...options, config: interrupted, wait: async () => { throw new Error('cancelled'); } }), /cancelled/);
+  assert.equal(interrupted.welcomeSeen, undefined, 'an interrupted first run can show the welcome again');
+  assert.equal(saves, 1, 'automation and interruption do not save preferences');
+});
+
 test('atajo del shell: bloque idempotente y reversible', () => {
   const base = 'export A=1\n';
   const once = base + '\n' + hd.SNIP.posix;

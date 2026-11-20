@@ -1,5 +1,11 @@
 # Cambios
 
+## Sin publicar
+
+### Nuevo
+- La mascota adopta rasgos de mono más claros: orejas redondas, mechón y hocico, conservando los auriculares y los colores de Hopdeck. El dibujo también se actualiza en la terminal.
+- Bienvenida al abrir cada modo de Hopdeck por primera vez, con la marca, la versión y los comandos para Claude/Codex y los atajos. Se recuerda al continuar, con español/inglés y respeto de `NO_COLOR`; no aparece en comandos informativos ni en automatizaciones.
+
 ## 1.5.3
 
 ### Arreglado

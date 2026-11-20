@@ -1,0 +1,12 @@
+Tool: built-in image_gen (edit mode)
+Edit target: docs/mascot.png before the monkey redesign (Git commit 59bd764).
+transparent_background: true
+
+Final prompt:
+Use case: style-transfer.
+Asset type: Hopdeck terminal-app mascot; the deliverable replaces the current mascot PNG and will also be reduced to a 64x64 RGBA terminal sprite.
+Input image: the attached existing docs/mascot.png is the EDIT TARGET, and also defines the pixel-art style, orange/cream/charcoal palette, front-facing bust composition, black hoodie and over-ear headphones.
+Primary request: redesign this same mascot as an unmistakable friendly MONKEY, rather than a toad/frog. Preserve the orange Hopdeck identity, black headphones with orange trim, black hoodie, cheerful welcoming expression, compact symmetrical head-and-shoulders icon and genuinely transparent background.
+Make the monkey anatomy clear even as a tiny sprite: round furry orange head, a small hair tuft, two LARGE ROUND MONKEY EARS visibly protruding outside/below the headphone earcups, a distinct light cream heart-shaped eye/cheek mask and oval projecting monkey muzzle with a small dark nose and smiling mouth. The face must read as a monkey at thumbnail size, with eyes centered in the face rather than frog eyes on top. Use broader clear pixel clusters and strong silhouette separation. Keep the headphones visually distinct from the actual round ears, do not confuse earcups with ears.
+Style: polished retro pixel art, with crisp square stepped pixel edges, a limited warm orange/cream/black palette and restrained shading. Keep close to the reference's chibi developer-mascot personality. Build it like a 64x64 logical sprite displayed enlarged, not a smooth vector cartoon or photoreal render. Large simple forms for excellent terminal readability. Entire head, real ears, headphones and shoulders fit inside the canvas with transparent margin on all edges.
+No text, letters, watermark, badges, scenery, floor shadow or extra props. No frog traits. No white or checkerboard painted background: real alpha transparency. One centered character only.

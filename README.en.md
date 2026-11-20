@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-<p align="center"><img alt="The Hopdeck mascot: an orange toad with headphones" src="docs/mascot.png" width="130"></p>
+<p align="center"><img alt="The Hopdeck mascot: an orange monkey with headphones" src="docs/mascot.png" width="130"></p>
 
 <p align="center"><b>Hop between your Claude Code or Codex projects and conversations without leaving the terminal.</b></p>
 
@@ -68,6 +68,8 @@ Hopdeck shows **all your projects and conversations on one screen**, with previe
 npm install -g hopdeck
 hopdeck
 ```
+
+The first time you open each Hopdeck mode, a welcome screen shows the version and the commands to get started. Press `Enter` to continue or `Esc` to skip it; it will not appear again in that mode. The usual shortcut question follows. It does not appear with `--version`, `--help`, `--list`, in CI, or with `HOPDECK_NOPROMPT=1`. Installation remains `npm install -g hopdeck`, with no extra options.
 
 Done. You can also try it without installing: `npx hopdeck`.
 

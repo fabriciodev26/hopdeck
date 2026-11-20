@@ -17,6 +17,7 @@ const codexHistory = require('../lib/codex-history');
 const { findExecutable } = require('../lib/executable');
 
 const { LANG, T } = require('../lib/i18n');
+const { showWelcome } = require('../lib/welcome');
 const { TRUE, NOCOL, LIGHT, setTheme, isLight, fg, bg, R, C, cw, strW, fit, clean } = require('../lib/style');
 const mascot = require('../lib/mascot');
 const stats = require('../lib/stats');
@@ -2054,6 +2055,8 @@ function splash(done, total) {
 async function run() {
   if (!process.stdin.isTTY || !process.stdout.isTTY) { printList(); return; }
   if (!SIDEBAR && process.env.HOPDECK_INSIDE) { console.log(T.inside); return; }
+  if (!SIDEBAR) await showWelcome({ config: CFG, save: saveCfg, lang: LANG,
+    wait: () => readKey(k => /^[\r\n]+$/.test(k) || k === '\x1b' ? true : undefined) });
   if (!SIDEBAR) await offerShortcut(); // primera vez: ¿quieres que `claude` abra Hopdeck?
   if (!SIDEBAR) {
     // Por defecto se usa el terminal integrado (vista previa al pasar el cursor, imágenes). tmux solo con HOPDECK_TMUX=1,

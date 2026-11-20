@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-<p align="center"><img alt="La mascota de Hopdeck: un sapo naranja con auriculares" src="docs/mascot.png" width="130"></p>
+<p align="center"><img alt="La mascota de Hopdeck: un mono naranja con auriculares" src="docs/mascot.png" width="130"></p>
 
 <p align="center"><b>Salta entre tus proyectos y conversaciones de Claude Code o Codex, sin salir de la terminal.</b></p>
 
@@ -68,6 +68,8 @@ Hopdeck te enseña **todos tus proyectos y conversaciones en una sola pantalla**
 npm install -g hopdeck
 hopdeck
 ```
+
+Al abrir cada modo de Hopdeck por primera vez aparece una bienvenida con la versión y los comandos para empezar. Pulsa `Enter` para continuar o `Esc` para omitirla; después no vuelve a aparecer en ese modo. Sigue la pregunta habitual de los atajos. No se muestra con `--version`, `--help`, `--list`, en CI ni con `HOPDECK_NOPROMPT=1`. La instalación sigue siendo `npm install -g hopdeck`, sin opciones adicionales.
 
 Listo. También puedes probarlo sin instalar: `npx hopdeck`.
 
