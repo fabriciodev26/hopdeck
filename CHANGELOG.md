@@ -1,6 +1,6 @@
 # Cambios
 
-## Sin publicar
+## 1.5.3
 
 ### Arreglado
 - En macOS, la selección del chat reconoce Command+C cuando el terminal lo reenvía como CSI u. Control+C y el clic derecho siguen disponibles. Se documenta la configuración de iTerm2 y Ghostty y la selección nativa para Terminal de Apple.
