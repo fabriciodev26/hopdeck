@@ -162,8 +162,14 @@ test('primer arranque: pregunta si `claude` debe abrir Hopdeck, recuerda "No" y 
   const root = tmp('hopdeck-ui-offer-'); const fx = makeFixture(root, [alpha()]);
   const cfgFile = path.join(root, 'cfg.json');
   // HOPDECK_PROFILES fija un perfil de shell de prueba: así la prueba no depende de si TU perfil ya tiene el atajo instalado
-  const h = launchHub({ root, fx, cwd: fx.cwds.alpha, env: { HOPDECK_NOPROMPT: '', HOPDECK_PROFILES: path.join(root, 'perfil-de-prueba.sh') } });
+  const env = { HOPDECK_NOPROMPT: '', CI: '', HOPDECK_PROFILES: path.join(root, 'perfil-de-prueba.sh') };
+  const h = launchHub({ root, fx, cwd: fx.cwds.alpha, env });
   try {
+    await h.waitFor(/Bienvenido a Hopdeck/, 'bienvenida del primer arranque');
+    await h.waitFor(/Enter para empezar/, 'permite leer la bienvenida antes de continuar');
+    assert.match(h.screen(), /hopdeck --provider codex/);
+    assert.ok(!fs.existsSync(cfgFile), 'no guarda la bienvenida antes de continuar');
+    h.write('\r');
     await h.waitFor(/abrir Hopdeck escribiendo claude/, 'pregunta del primer arranque', 40000);
     assert.match(h.screen(), /\[Enter\] Sí/, 'muestra las opciones');
     assert.match(h.screen(), /copia de seguridad/, 'avisa de la copia de seguridad');
@@ -172,12 +178,18 @@ test('primer arranque: pregunta si `claude` debe abrir Hopdeck, recuerda "No" y 
     await h.waitFor(/Sesión dos/, 'después de responder se abre la lista');
     const cfg = JSON.parse(fs.readFileSync(cfgFile, 'utf8'));
     assert.equal(cfg.shortcutAsked, true, 'queda guardado que ya se preguntó');
+    assert.equal(cfg.welcomeSeen, true, 'queda guardado que ya se leyó la bienvenida');
     h.write('q');
     // al salir se ve la pantalla normal de la terminal: la pregunta ya no debe seguir escrita (parecía pendiente) y hay un resumen de una línea
     await h.waitFor(/Atajo no instalado/, 'resumen de la respuesta en la pantalla normal', 15000);
     assert.doesNotMatch(h.screen(), /¿Quieres poder abrir|\[Enter\] Sí/, 'la pregunta se borró de la pantalla');
     assert.ok(!fs.existsSync(path.join(root, 'perfil-de-prueba.sh')), 'responder que no no escribe en ningún perfil');
   } finally { await h.close(); }
+  const again = launchHub({ root, fx, cwd: fx.cwds.alpha, env });
+  try {
+    await again.waitFor(/Sesión dos/, 'el siguiente arranque entra directamente al selector');
+    assert.doesNotMatch(again.screen(), /Bienvenido a Hopdeck|Enter para empezar|abrir Hopdeck escribiendo/);
+  } finally { await again.close(); }
 });
 
 // ───────────── modo tmux: el ratón de la lista ─────────────
