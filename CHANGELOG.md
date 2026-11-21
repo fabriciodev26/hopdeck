@@ -1,6 +1,6 @@
 # Cambios
 
-## Sin publicar
+## 1.5.5
 
 ### Arreglado
 - Un clic sobre una URL `http://` o `https://` del chat abre el navegador predeterminado, también cuando el enlace ocupa varias líneas. Funciona en Claude y Codex; arrastrar sigue seleccionando texto.
