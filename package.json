@@ -1,6 +1,6 @@
 {
   "name": "hopdeck",
-  "version": "1.5.4",
+  "version": "1.5.5",
   "description": "Selector visual de proyectos y conversaciones para Claude Code y Codex CLI, en la terminal: salta entre proyectos sin hacer cd.",
   "author": "fabriciodev26",
   "license": "MIT",
