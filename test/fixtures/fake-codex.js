@@ -3,6 +3,7 @@ const fs = require('fs');
 const args = process.argv.slice(2);
 const file = process.env.HOPDECK_FAKE_THREADS;
 const read = () => JSON.parse(fs.readFileSync(file, 'utf8'));
+const items = (id) => process.env.HOPDECK_FAKE_ITEMS ? JSON.parse(fs.readFileSync(process.env.HOPDECK_FAKE_ITEMS, 'utf8'))[id] || [] : null;
 if (args[0] === 'app-server') {
   if (process.env.FAKE_RPC_PID_FILE) fs.writeFileSync(process.env.FAKE_RPC_PID_FILE, String(process.pid));
   if (process.env.FAKE_RPC_KEEPALIVE) setInterval(() => {}, 1000);
@@ -20,11 +21,16 @@ if (args[0] === 'app-server') {
       result = params.cursor ? { data: all.slice(1), nextCursor: null } : { data: all.slice(0, 1), nextCursor: all.length > 1 ? 'page2' : null };
     } else if (method === 'thread/items/list') {
       if (process.env.FAKE_RPC === 'legacy') { console.log(JSON.stringify({ id, error: { code: -32601, message: 'Method not found' } })); return; }
-      result = { data: [
+      const all = items(params.threadId);
+      if (all) {
+        const ordered = params.sortDirection === 'desc' ? [...all].reverse() : all;
+        const start = Number(params.cursor || 0), limit = Number(process.env.FAKE_PAGE_SIZE || params.limit);
+        result = { data: ordered.slice(start, start + limit).map((item) => ({ turnId: 'turn', item })), nextCursor: start + limit < all.length ? String(start + limit) : null };
+      } else result = { data: [
         { turnId: 'turn', item: { type: 'agentMessage', text: 'Respuesta de Codex de prueba' } },
         { turnId: 'turn', item: { type: 'userMessage', content: [{ type: 'text', text: 'Pregunta de Codex de prueba' }] } },
       ], nextCursor: null };
-    } else if (method === 'thread/read') result = { thread: { turns: [{ items: [{ type: 'agentMessage', text: 'Respuesta antigua' }] }] } };
+    } else if (method === 'thread/read') result = { thread: { turns: [{ items: items(params.threadId) || [{ type: 'agentMessage', text: 'Respuesta antigua' }] }] } };
     else { console.log(JSON.stringify({ id, error: { code: -32601, message: 'Method not found' } })); return; }
     console.log(JSON.stringify({ id, result }));
   });
@@ -36,6 +42,7 @@ if (args[0] === 'app-server') {
     fs.writeFileSync(file, JSON.stringify(all));
   }
   process.stdout.write('FAKE CODEX args=' + args.join(' ') + '\r\n> ');
+  if (process.env.FAKE_PRINT) process.stdout.write(process.env.FAKE_PRINT + '\r\n> ');
   let buffer = '';
   process.stdin.on('data', (data) => {
     buffer += data.toString(); let at;

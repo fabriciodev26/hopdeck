@@ -278,6 +278,34 @@ test('clic en [Image #N] abre la imagen en el visor; arrastrar o hacer clic en o
   } finally { await h.close(); }
 });
 
+for (const provider of ['claude', 'codex']) test(`enlaces en ${provider}: clic abre la URL completa y arrastrar solo selecciona`, opts, async () => {
+  const root = tmp('hopdeck-ui-links-'), log = path.join(root, 'opened.log');
+  const fx = makeFixture(root, [alpha()]), threads = path.join(root, 'threads.json');
+  fs.writeFileSync(threads, JSON.stringify([{ id: 'link-session', name: 'Sesión uno', preview: 'links', cwd: fx.cwds.alpha, updatedAt: 1700000000, source: 'cli', originator: 'codex_cli_rs' }]));
+  const first = 'https://example.com/?a=1&b=2#section', wrapped = 'https://example.com/' + 'long-path/'.repeat(12) + '?tail=ok';
+  const h = launchHub({ root, fx, cwd: fx.cwds.alpha, env: { HOPDECK_PROVIDER: provider, HOPDECK_FAKE_THREADS: threads, HOPDECK_OPEN_LOG: log,
+    FAKE_PRINT: `visita ${first}\r\n${wrapped}\r\nfile:///tmp/example javascript:alert(1)` }, args: ['--provider', provider] });
+  const opened = () => fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n') : [];
+  try {
+    await h.waitFor(/alpha/, 'project list');
+    h.write('\x10'); await h.waitFor(/⌕/, 'quick switch'); h.write('uno'); await h.waitFor(/Sesión uno/, 'match'); h.write('\r');
+    await h.waitFor(/file:\/\/\/tmp\/example/, 'URLs in the chat');
+    const url = h.find('https://example.com/?', 35); assert.ok(url);
+    h.mouse(0, url.x + 5, url.y); h.mouse(32, url.x + 10, url.y); h.mouse(32, url.x + 5, url.y); h.mouse(0, url.x + 5, url.y, 'm');
+    await h.waitFor(/copiar/, 'drag keeps a selection'); assert.equal(opened().length, 0, 'dragging back to the start is not a click');
+    const unsafe = h.find('file:///tmp/example', 35); assert.ok(unsafe);
+    h.mouse(0, unsafe.x + 5, unsafe.y); h.mouse(0, unsafe.x + 5, unsafe.y, 'm');
+    const script = h.find('javascript:alert', 35); assert.ok(script);
+    h.mouse(0, script.x + 5, script.y); h.mouse(0, script.x + 5, script.y, 'm');
+    h.mouse(0, url.x + 5, url.y); h.mouse(0, url.x + 5, url.y, 'm');
+    await h.waitFor(/Enlace abierto/, 'first URL opens'); assert.deepEqual(opened(), [first]);
+    const tail = h.find('?tail=', 35); assert.ok(tail);
+    h.mouse(0, tail.x + 2, tail.y); h.mouse(0, tail.x + 2, tail.y, 'm');
+    for (let i = 0; i < 100 && opened().length < 2; i++) await h.sleep(50);
+    assert.deepEqual(opened(), [first, wrapped], 'wrapped URL opens once with its query intact');
+  } finally { await h.close(); }
+});
+
 // ───────────── imágenes reales (Sixel) en el hover ─────────────
 const sixelFixture = () => {
   const root = tmp('hopdeck-ui-sixel-');

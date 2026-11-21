@@ -757,6 +757,32 @@ test('imageMarkerAt: encuentra la marca [Image #N] bajo el cursor con caracteres
   term.dispose();
 });
 
+test('URL clicks: wide characters, wrapped URLs, punctuation and allowed protocols', async () => {
+  const { Terminal } = require('@xterm/headless'), { urlAt, webUrl, openUrl } = require('../lib/links');
+  const term = new Terminal({ cols: 48, rows: 12, allowProposedApi: true });
+  const url = 'https://example.com/path?first=1&second=2#end';
+  await new Promise((resolve) => term.write('日本語 ' + url + '\r\n[docs](https://example.com/a_(b)).\r\nfile:///tmp/example javascript:alert(1)\r\n', resolve));
+  assert.equal(urlAt(term, 0, 9), url, 'URL after wide characters');
+  assert.equal(urlAt(term, 1, 3), url, 'a soft-wrapped continuation resolves the entire URL');
+  assert.equal(urlAt(term, 0, 5), null, 'text before the URL');
+  assert.equal(urlAt(term, 2, 12), 'https://example.com/a_(b)', 'balanced parentheses stay in the URL');
+  assert.equal(urlAt(term, 2, 35), null, 'Markdown closing punctuation is outside the link');
+  assert.equal(urlAt(term, 3, 3), null, 'local paths do not open');
+  assert.equal(webUrl('javascript:alert(1)'), null);
+  assert.equal(webUrl('file:///tmp/example'), null);
+  assert.equal(webUrl('https://example.com/\ncommand'), null);
+  assert.equal(webUrl('https://'), null);
+  const calls = [], spawn = (...args) => { calls.push(args); return { on() {}, unref() {} }; };
+  for (const [platform, env, command] of [['win32', {}, 'explorer.exe'], ['darwin', {}, 'open'], ['linux', {}, 'xdg-open'], ['linux', { WSL_DISTRO_NAME: 'test' }, 'explorer.exe']]) {
+    assert.equal(openUrl(url, { platform, env, spawn }), true);
+    const [actual, args, options] = calls.at(-1);
+    assert.equal(actual, command); assert.deepEqual(args, [url]); assert.equal(options.shell, false);
+  }
+  assert.equal(openUrl('file:///tmp/example', { spawn }), false);
+  assert.equal(calls.length, 4, 'rejected schemes never launch a process');
+  term.dispose();
+});
+
 test('shownSession: un chat nuevo sin enlazar solo toma una conversación creada después de abrirlo', async () => {
   const saved = { ...hd.S };
   try {

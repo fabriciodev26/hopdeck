@@ -25,6 +25,7 @@ const { baseName, tidy, home, shortPath, fold, queryWords, matchWords, fuzzy, wr
 const hist = require('../lib/history');
 const { CONFIG_DIR, CACHE_FILE, textOf, isType, cacheLoad, cacheSave, readSession, decodeDir, projectDirs, buildProject, beginScan, endScan } = hist;
 const images = require('../lib/images');
+const { urlAt, openUrl } = require('../lib/links');
 const { encodeSixel } = require('../lib/sixel');
 const gitlib = require('../lib/git');
 const deepsearch = require('../lib/deepsearch');
@@ -1106,12 +1107,12 @@ const previewMsgs = () => (CFG.previewMsgs > 0 ? CFG.previewMsgs : 12);
 const extractImages = (file) => images.extractImages(file, maxImages());
 
 async function imagesOf(x) {
-  if (provider.isCodex) return [];
-  const hit = IMG.get(x.file);
-  if (hit && hit.m === x.mtime) return hit.images;
-  const images = await extractImages(x.file);
-  IMG.set(x.file, { m: x.mtime, images });
-  return images;
+  const key = provider.isCodex ? 'codex:' + x.id : x.file, hit = IMG.get(key);
+  if (hit && hit.m === x.mtime && Date.now() < hit.until) return hit.images;
+  const entry = { m: x.mtime, until: provider.isCodex ? Date.now() + 2000 : Infinity,
+    images: provider.isCodex ? codexHistory.imagesSession(x, maxImages()) : extractImages(x.file) };
+  IMG.set(key, entry);
+  try { return await entry.images; } catch (err) { if (IMG.get(key) === entry) IMG.delete(key); throw err; }
 }
 
 /** Abre un archivo o carpeta con el programa por defecto del sistema. */
@@ -1263,10 +1264,11 @@ function hoverPopup(hv, rw, th) {
 }
 
 /** La imagen que corresponde a "[Image #n]" en la conversación de este chat, o null si aún no está en el historial. */
-async function imageForMarker(sh, n) {
+async function imageForMarker(sh, n, y) {
   try {
     const sess = await shownSession(sh);
     if (!sess) return null;
+    if (provider.isCodex) return await codexHistory.imageForNumber(sess, n, codexMarkerOffset(sh.term, y, n));
     const imgs = await imagesOf(sess);
     let img = imgs.find((im) => im.n === n) || (imgs.some((im) => im.n) ? null : imgs[n - 1]) || null;
     if (!img && imgs.length >= maxImages()) img = await images.findImageByNumber(sess.file, n); // pasó el límite de la galería: se busca en todo el archivo
@@ -1274,12 +1276,24 @@ async function imageForMarker(sh, n) {
   } catch { return null; }
 }
 
+// Codex restarts image numbering in each user message. Count from the end of the
+// terminal transcript so older visible messages resolve to their own attachment.
+function codexMarkerOffset(term, y, n) {
+  if (!Number.isInteger(y)) return 0;
+  const b = term.buffer.active; let count = 0;
+  for (let row = b.viewportY + y + 1; row < b.length; row++) {
+    const text = b.getLine(row)?.translateToString(true) || '';
+    for (const match of text.matchAll(/\[Image\s*#(\d+)\]/g)) if (+match[1] === n) count++;
+  }
+  return count;
+}
+
 /**
  * Clic en un "[Image #N]": abre esa imagen en el visor del sistema, a su tamaño real. En el terminal solo se puede dibujar una
  * vista rápida (dos píxeles por carácter): una captura de pantalla con texto de 1917 px de ancho queda en unos 50 y no se lee.
  */
-async function openMarkerImage(sh, n) {
-  const img = await imageForMarker(sh, n);
+async function openMarkerImage(sh, n, y) {
+  const img = await imageForMarker(sh, n, y);
   const note = (t) => { E.note = { t, until: Date.now() + 2500 }; scheduleRender(); };
   if (!img) return note(T.hoverMiss(n));
   const { files } = exportImages([img]);
@@ -1296,12 +1310,12 @@ function hoverChat(sh, x, y) {
     if (hit) { n = hit.n; at = { x: hit.x, y: y - 3 }; }
   }
   if (!n) { if (E.hover) { E.hover = null; scheduleRender(); } return; }
-  const k = `${n}:${at.x}:${at.y}`;
+  const k = `${sh.sid || sh.t0}:${n}:${at.x}:${at.y}:${sh.term.buffer.active.viewportY}`;
   if (E.hover && E.hover.k === k) return;
   const hv = { n, k, at, g: { project: sh.project, title: sh.title, images: [], i: 0, loading: true, pending: false, dec: new Map(), cache: new Map() } };
   E.hover = hv; scheduleRender();
   (async () => {
-    const img = await imageForMarker(sh, n);
+    const img = await imageForMarker(sh, n, at.y);
     if (E.hover !== hv) return; // el cursor ya se fue
     if (!img) { hv.g.loading = false; E.note = { t: T.hoverMiss(n), until: Date.now() + 2000 }; return scheduleRender(); }
     hv.g.images = [img]; hv.g.loading = false; scheduleRender();
@@ -1691,7 +1705,7 @@ function sidebarMouse(b, x, y, type, rows = process.stdout.rows || 30) {
 
 function onMouse(b, x, y, type) {
   if (E.gallery) return;
-  const { SW, GW, rw, rh } = embedLayout();
+  const { SW, GW, rw, rh, th } = embedLayout();
   const sh = E.sessions.get(E.shown);
   // líneas divisorias arrastrables (columna de cada '│'): lista|chat y chat|git
   const sx = SW ? SW + 1 : 0, gx = GW ? sx + rw + 1 : 0;
@@ -1720,20 +1734,24 @@ function onMouse(b, x, y, type) {
     if (L[i] && i !== S.c) { S.c = i; scheduleRender(); }
     return;
   }
-  const x0 = SW ? SW + 2 : 1, inPane = (SW ? x > SW + 1 : true) && y >= 3 && sh && sh.ready;
+  const x0 = SW ? SW + 2 : 1, inPane = (SW ? x > SW + 1 : true) && y >= 3 && y < th + 3 && sh && sh.ready;
   // celda del chat bajo el ratón; `y` es la línea del historial (ver selRange), así que sirve aunque el chat esté desplazado
   const cell = () => { const L = embedLayout(); return { x: clamp(x - x0, 0, L.rw - 1), y: sh.term.buffer.active.viewportY + clamp(y - 3, 0, L.th - 1) }; };
   if ((b & 32) && (b & 3) === 0) { // arrastre
-    if (E.sel && E.sel.down && sh) { E.sel.b = cell(); selEdge(sh, y - 3); render(); }
+    if (E.sel && E.sel.down && sh) { E.sel.b = cell(); if (E.sel.a.x !== E.sel.b.x || E.sel.a.y !== E.sel.b.y) E.sel.moved = true; selEdge(sh, y - 3); render(); }
     return;
   }
   if (type === 'm') { // soltar
     stopSelScroll();
     const sl = E.sel;
     if (!sl || !sl.down) return render();
-    if (sl.a.x === sl.b.x && sl.a.y === sl.b.y) { // un clic sin arrastrar: si es sobre un [Image #N], se abre la imagen
+    if (!sl.moved && sl.a.x === sl.b.x && sl.a.y === sl.b.y) { // clic: imágenes y enlaces web; arrastrar sigue seleccionando texto
       E.sel = null;
-      if (sh && sh.ready) { const hit = imageMarkerAt(sh.term, sl.a.y - sh.term.buffer.active.viewportY, sl.a.x); if (hit) openMarkerImage(sh, hit.n); }
+      if (sh && sh.ready) {
+        const row = sl.a.y - sh.term.buffer.active.viewportY, hit = imageMarkerAt(sh.term, row, sl.a.x);
+        if (hit) openMarkerImage(sh, hit.n, row);
+        else { const url = urlAt(sh.term, row, sl.a.x); if (url && openUrl(url)) E.note = { t: T.linkOpened, until: Date.now() + 2500 }; }
+      }
       return render();
     }
     sl.down = false; // la selección se queda marcada: no se copia sola (se copia con Ctrl+C o clic derecho), salvo con "copyOnSelect": true
@@ -2471,6 +2489,6 @@ else {
     readSession, buildProject, scan, scanAsync, finishScan, sortProjects, projectDirs,
     view, flatList, stripBlock, offerShortcut, uninstallAll, commandName, suggestCommand, parseTermReplies, sixelOn, SNIP, MARK_A, MARK_B, toggleProject, cacheLoad, selNorm,
     decodePNG, decodeImage, scaleBox, fitSize, halfBlocks, collectImages, extractImages,
-    onMouse, dragPanel, panelLimits, embedLayout, sessTag, editBuf, normalizeKeys, stripJsonc, wtCtrlV, fbNames, fbOpen, fbRows, sidebarMouse, toggleTheme, gitBranch, imageMarkerAt, shownSession, linkChats, findImageByNumber: images.findImageByNumber,
+    onMouse, dragPanel, panelLimits, embedLayout, sessTag, editBuf, normalizeKeys, stripJsonc, wtCtrlV, fbNames, fbOpen, fbRows, sidebarMouse, toggleTheme, gitBranch, imageMarkerAt, codexMarkerOffset, shownSession, linkChats, findImageByNumber: images.findImageByNumber,
   };
 }

@@ -33,7 +33,9 @@ hopdeck shortcut on
 
 Existing users can run `hopdeck shortcut on` again and open a new terminal to add the Codex shortcut. From a source checkout, run `npm link` first to point the global command at the local version.
 
-**First Codex version:** projects, conversations, previews, project/title/first-message search, new and resumed chats, multiple live chats and the Git panel. Requires an installed `codex` supporting `codex app-server`. Hopdeck reads history through its local API and resumes with `codex resume <ID>`; it does not edit Codex databases. Custom titles and archives are local to Hopdeck (`~/.hopdeck-codex.json`). Image galleries, statistics and full-content search remain available in Claude mode; Codex activity indicators are basic and depend on its terminal text.
+**Codex mode:** projects, conversations, previews, images, project/title/first-message search, new and resumed chats, multiple live chats and the Git panel. Requires an installed `codex` supporting `codex app-server`. Hopdeck reads history through its local API and resumes with `codex resume <ID>`; it does not edit Codex databases. Custom titles and archives are local to Hopdeck (`~/.hopdeck-codex.json`). Statistics and full-content search remain available in Claude mode; Codex activity indicators are basic and depend on its terminal text.
+
+In Codex, `i` / `F7` opens the gallery and `[Image #N]` markers support hover previews and full-size clicks. Images come from saved history attachments and local files that still exist. Remote URLs and attachments exposed only as `fileId` are not downloaded. Deleted files and images that have not been sent yet cannot be previewed.
 
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/02-vista-dividida-light.svg">
@@ -165,6 +167,8 @@ It always starts at `~`. Recently used folders appear on top (`↻ recent`).
 `Ctrl+P` searches **every** conversation of **every** project (title, project and first message). `⏎` opens it directly.
 
 ### Images in the chat
+
+In Claude and Codex chats, click an `http://` or `https://` URL to open your default browser. Links wrapped across lines also work; dragging over text still selects it.
 
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/04-hover-imagen-light.svg">
