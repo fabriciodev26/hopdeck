@@ -13,6 +13,7 @@
   - Al renombrar una conversación (`R`), añade una línea `custom-title` al final de su archivo `.jsonl`, igual que hace Claude Code.
 - Ejecuta el comando `claude` o `codex` que encuentre en tu `PATH`. Si alguien puede cambiar tu `PATH`, puede cambiar qué se ejecuta (como con cualquier programa).
 - Lo que se muestra en pantalla procedente del historial (títulos, mensajes, rutas) se limpia de caracteres de control y secuencias de escape antes de dibujarse.
+- Un clic sobre una URL del chat abre el navegador predeterminado. Solo se aceptan enlaces HTTP/HTTPS, que se pasan como un argumento al programa del sistema sin usar un intérprete de comandos.
 
 ## Versiones con soporte
 

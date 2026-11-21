@@ -168,6 +168,8 @@ Empieza siempre en `~`. Las carpetas que usaste hace poco aparecen arriba (`↻ 
 
 ### Imágenes del chat
 
+En los chats de Claude y Codex, un clic sobre una URL `http://` o `https://` abre el navegador predeterminado. También reconoce enlaces partidos entre líneas; arrastrar sobre el texto permite seleccionarlo.
+
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/04-hover-imagen-light.svg">
   <img alt="Cuadro flotante con la imagen al pasar el cursor por [Image #1]" src="docs/screenshots/04-hover-imagen.svg">

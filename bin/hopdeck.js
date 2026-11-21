@@ -25,6 +25,7 @@ const { baseName, tidy, home, shortPath, fold, queryWords, matchWords, fuzzy, wr
 const hist = require('../lib/history');
 const { CONFIG_DIR, CACHE_FILE, textOf, isType, cacheLoad, cacheSave, readSession, decodeDir, projectDirs, buildProject, beginScan, endScan } = hist;
 const images = require('../lib/images');
+const { urlAt, openUrl } = require('../lib/links');
 const { encodeSixel } = require('../lib/sixel');
 const gitlib = require('../lib/git');
 const deepsearch = require('../lib/deepsearch');
@@ -1704,7 +1705,7 @@ function sidebarMouse(b, x, y, type, rows = process.stdout.rows || 30) {
 
 function onMouse(b, x, y, type) {
   if (E.gallery) return;
-  const { SW, GW, rw, rh } = embedLayout();
+  const { SW, GW, rw, rh, th } = embedLayout();
   const sh = E.sessions.get(E.shown);
   // líneas divisorias arrastrables (columna de cada '│'): lista|chat y chat|git
   const sx = SW ? SW + 1 : 0, gx = GW ? sx + rw + 1 : 0;
@@ -1733,20 +1734,24 @@ function onMouse(b, x, y, type) {
     if (L[i] && i !== S.c) { S.c = i; scheduleRender(); }
     return;
   }
-  const x0 = SW ? SW + 2 : 1, inPane = (SW ? x > SW + 1 : true) && y >= 3 && sh && sh.ready;
+  const x0 = SW ? SW + 2 : 1, inPane = (SW ? x > SW + 1 : true) && y >= 3 && y < th + 3 && sh && sh.ready;
   // celda del chat bajo el ratón; `y` es la línea del historial (ver selRange), así que sirve aunque el chat esté desplazado
   const cell = () => { const L = embedLayout(); return { x: clamp(x - x0, 0, L.rw - 1), y: sh.term.buffer.active.viewportY + clamp(y - 3, 0, L.th - 1) }; };
   if ((b & 32) && (b & 3) === 0) { // arrastre
-    if (E.sel && E.sel.down && sh) { E.sel.b = cell(); selEdge(sh, y - 3); render(); }
+    if (E.sel && E.sel.down && sh) { E.sel.b = cell(); if (E.sel.a.x !== E.sel.b.x || E.sel.a.y !== E.sel.b.y) E.sel.moved = true; selEdge(sh, y - 3); render(); }
     return;
   }
   if (type === 'm') { // soltar
     stopSelScroll();
     const sl = E.sel;
     if (!sl || !sl.down) return render();
-    if (sl.a.x === sl.b.x && sl.a.y === sl.b.y) { // un clic sin arrastrar: si es sobre un [Image #N], se abre la imagen
+    if (!sl.moved && sl.a.x === sl.b.x && sl.a.y === sl.b.y) { // clic: imágenes y enlaces web; arrastrar sigue seleccionando texto
       E.sel = null;
-      if (sh && sh.ready) { const row = sl.a.y - sh.term.buffer.active.viewportY, hit = imageMarkerAt(sh.term, row, sl.a.x); if (hit) openMarkerImage(sh, hit.n, row); }
+      if (sh && sh.ready) {
+        const row = sl.a.y - sh.term.buffer.active.viewportY, hit = imageMarkerAt(sh.term, row, sl.a.x);
+        if (hit) openMarkerImage(sh, hit.n, row);
+        else { const url = urlAt(sh.term, row, sl.a.x); if (url && openUrl(url)) E.note = { t: T.linkOpened, until: Date.now() + 2500 }; }
+      }
       return render();
     }
     sl.down = false; // la selección se queda marcada: no se copia sola (se copia con Ctrl+C o clic derecho), salvo con "copyOnSelect": true
