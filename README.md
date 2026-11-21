@@ -33,7 +33,9 @@ hopdeck shortcut on
 
 Si ya tenías el atajo de Claude, ejecuta otra vez `hopdeck shortcut on` y abre una terminal nueva para añadir el de Codex. Desde una copia del repositorio, usa primero `npm link` para actualizar el comando global con tu código local.
 
-**Primera versión de Codex:** lista proyectos y conversaciones, vista previa, búsqueda por proyecto/título/primer mensaje, chats nuevos y reanudados, varios chats abiertos y panel de Git. Necesita `codex` instalado y con soporte para `codex app-server`. Hopdeck consulta el historial mediante su API local y reanuda con `codex resume <ID>`; no modifica las bases de datos de Codex. Los nombres personalizados y archivados se guardan solo en Hopdeck (`~/.hopdeck-codex.json`). La galería de imágenes, estadísticas y búsqueda en el contenido completo quedan disponibles en el modo Claude; los indicadores de actividad de Codex son básicos y dependen del texto de su terminal.
+**Modo Codex:** lista proyectos y conversaciones, vista previa, imágenes, búsqueda por proyecto/título/primer mensaje, chats nuevos y reanudados, varios chats abiertos y panel de Git. Necesita `codex` instalado y con soporte para `codex app-server`. Hopdeck consulta el historial mediante su API local y reanuda con `codex resume <ID>`; no modifica las bases de datos de Codex. Los nombres personalizados y archivados se guardan solo en Hopdeck (`~/.hopdeck-codex.json`). Las estadísticas y la búsqueda en el contenido completo quedan disponibles en el modo Claude; los indicadores de actividad de Codex son básicos y dependen del texto de su terminal.
+
+En Codex, `i` / `F7` abre la galería y las marcas `[Image #N]` permiten previsualizar con el cursor o abrir con clic. Se leen los adjuntos guardados en el historial y los archivos locales que sigan existiendo. Las URL remotas y los adjuntos que Codex solo identifica mediante `fileId` no se descargan. Un archivo borrado o una imagen aún sin enviar no tiene vista previa.
 
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/02-vista-dividida-light.svg">

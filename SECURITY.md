@@ -3,6 +3,7 @@
 ## Qué hace (y qué no) este programa con tus datos
 
 - Lee el historial local de Claude Code (`~/.claude/projects`, o `CLAUDE_CONFIG_DIR`). En modo Codex, consulta `thread/list` y las vistas previas mediante `codex app-server` por stdin/stdout; no abre puertos ni modifica sus bases de datos. Hopdeck no añade telemetría, analítica ni peticiones de red propias. Las CLI de Claude y Codex conservan sus conexiones y ajustes habituales.
+- Las imágenes de Codex se leen de sus adjuntos en la API local o de los archivos locales referenciados. Solo se aceptan archivos regulares con cabeceras de imagen reconocidas, de hasta 18 MB por imagen; no se descargan URL remotas ni se abren rutas de red.
 - Escribe solo en tu equipo:
   - `~/.hopdeck.json` (preferencias: proyectos fijados, ocultos, recientes…) y `~/.hopdeck-cache.json` (índice de títulos y primeros mensajes, con permisos solo para tu usuario).
   - `~/.hopdeck-codex.json` para las preferencias, títulos personalizados y archivados locales del modo Codex. Renombrar o archivar aquí no cambia las conversaciones de Codex.

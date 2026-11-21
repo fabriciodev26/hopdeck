@@ -1,5 +1,10 @@
 # Cambios
 
+## Sin publicar
+
+### Arreglado
+- Imágenes en el modo Codex: galería con `i` / `F7`, vista previa al pasar el cursor por `[Image #N]` y apertura con clic. Se leen adjuntos del historial y archivos locales, con soporte para la API anterior de Codex y para la numeración que vuelve a empezar en cada mensaje. Los mensajes que solo contienen imágenes también aparecen en la vista previa de la conversación.
+
 ## 1.5.4
 
 ### Nuevo

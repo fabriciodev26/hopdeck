@@ -4,9 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 const cp = require('child_process');
-const { tmp, launchHub } = require('./helpers');
+const { tmp, launchHub, makePNG } = require('./helpers');
 const { parseProvider } = require('../lib/provider');
-const { CodexClient, isCodexThread, listProjects, preview, groupThreads } = require('../lib/codex-history');
+const { CodexClient, isCodexThread, listProjects, preview, groupThreads, sessionImages, findSessionImage } = require('../lib/codex-history');
 const root = tmp('hopdeck-codex-');
 const cwd = path.join(root, 'project with spaces'); fs.mkdirSync(cwd);
 const threads = path.join(root, 'threads.json');
@@ -23,6 +23,53 @@ fs.writeFileSync(threads, JSON.stringify(mixedData));
 process.env.HOPDECK_FAKE_THREADS = threads;
 const fake = path.join(__dirname, 'fixtures', 'fake-codex.js');
 const makeClient = (timeout) => new CodexClient({ bin: process.execPath, args: [fake, 'app-server'], timeout });
+
+const red = makePNG(16, 8, () => [255, 0, 0, 255]), blue = makePNG(12, 6, () => [0, 0, 255, 255]);
+const localImage = path.join(cwd, 'blue image.png'); fs.writeFileSync(localImage, blue);
+const imageItems = path.join(root, 'image-items.json');
+const imageHistory = [
+  { id: 'img-user-one', type: 'userMessage', content: [{ type: 'text', text: '[Image #1] primera' }, { type: 'image', url: 'data:image/png;base64,' + red.toString('base64') }] },
+  { id: 'img-agent', type: 'agentMessage', text: 'Respuesta con imagen' },
+  { id: 'img-user-two', type: 'userMessage', content: [{ type: 'text', text: '[Image #1] segunda' }, { type: 'localImage', path: 'blue image.png' }, { type: 'localImage', path: 'missing.png' }] },
+];
+fs.writeFileSync(imageItems, JSON.stringify({ 'codex-one': imageHistory, 'codex-two': [{ type: 'userMessage', content: [{ type: 'image', url: 'data:image/png;base64,' + red.toString('base64') }] }] }));
+
+test('Codex images: paginated attachments, per-message numbers, missing files and legacy API', async () => {
+  process.env.HOPDECK_FAKE_ITEMS = imageItems; process.env.FAKE_PAGE_SIZE = '1';
+  try {
+    for (const legacy of [false, true]) {
+      if (legacy) process.env.FAKE_RPC = 'legacy';
+      const client = makeClient();
+      try {
+        const found = await sessionImages(client, data[0]);
+        assert.deepEqual(found.map((im) => im.n), [1, 1]);
+        assert.deepEqual(found.map((im) => Buffer.from(im.data, 'base64')), [red, blue]);
+        assert.equal((await sessionImages(client, data[0], 1)).length, 1, 'gallery limit is enforced');
+        assert.deepEqual(Buffer.from((await findSessionImage(client, data[0], 1)).data, 'base64'), blue, 'latest marker searches past the gallery limit');
+        assert.deepEqual(Buffer.from((await findSessionImage(client, data[0], 1, 1)).data, 'base64'), red, 'an older marker keeps its own attachment');
+        assert.equal(await findSessionImage(client, data[0], 2), null, 'a missing image never becomes another image');
+        assert.match((await preview(client, data[1]))[0].text, /\[Image #1\]/, 'image-only messages appear in previews');
+      } finally { client.close(); }
+    }
+  } finally { delete process.env.HOPDECK_FAKE_ITEMS; delete process.env.FAKE_PAGE_SIZE; delete process.env.FAKE_RPC; }
+});
+
+test('Codex images: reject non-images, remote URLs, directories and oversized files without shifting labels', async () => {
+  const bad = path.join(root, 'not-image.png'); fs.writeFileSync(bad, 'MZ this is not an image');
+  const large = path.join(root, 'large.png'), fd = fs.openSync(large, 'w'); fs.ftruncateSync(fd, 19 * 1024 * 1024); fs.closeSync(fd);
+  const content = [
+    { type: 'image', url: 'https://example.invalid/private.png' },
+    { type: 'image', url: 'data:image/png;base64,' + Buffer.from('MZ executable').toString('base64') },
+    { type: 'localImage', path: bad }, { type: 'localImage', path: root }, { type: 'localImage', path: large },
+    { type: 'localImage', path: localImage },
+  ];
+  const requests = [];
+  const client = { request: async (method) => { requests.push(method); return { data: [{ type: 'userMessage', content }], nextCursor: null }; } };
+  const found = await sessionImages(client, data[0]);
+  assert.deepEqual(found.map((im) => im.n), [6]);
+  assert.deepEqual(Buffer.from(found[0].data, 'base64'), blue);
+  assert.deepEqual(requests, ['thread/items/list']);
+});
 
 test('provider: explicit CLI option wins; invalid selection fails', () => {
   assert.deepEqual(parseProvider(['--provider', 'codex', '--model', 'test']), { id: 'codex', args: ['--model', 'test'] });
@@ -179,6 +226,38 @@ test('POSIX shortcuts select each provider and preserve arguments in real termin
       assert.deepEqual(records, [['hopdeck', '--provider', 'claude'], ['hopdeck', '--provider', 'codex'], ['claude', '--version'], ['codex', 'exec', 'hello world']]);
     } finally { clearTimeout(timer); try { p.kill(); } catch { /* already exited */ } }
   });
+});
+
+test('Codex image UI: gallery, hover and full-size clicks keep repeated image numbers separate', { timeout: 90000 }, async (t) => {
+  const uiRoot = tmp('hopdeck-codex-images-'), log = path.join(uiRoot, 'opened.log');
+  const h = launchHub({ root: uiRoot, fx: { cfg: uiRoot }, env: {
+    HOPDECK_PROVIDER: 'codex', HOPDECK_FAKE_THREADS: threads, HOPDECK_FAKE_ITEMS: imageItems, FAKE_PAGE_SIZE: '1',
+    HOPDECK_SIXEL: '0', HOPDECK_OPEN_LOG: log, FAKE_PRINT: '[Image #1] primera\r\nrespuesta\r\n[Image #1] segunda',
+  }, args: ['--provider', 'codex'] });
+  if (!h) return t.skip('node-pty/xterm unavailable');
+  try {
+    await h.waitFor(/project with spaces/, 'Codex projects');
+    h.write('\x10'); await h.waitFor(/⌕/, 'quick switch'); h.write('uno'); await h.waitFor(/Sesión Codex uno/, 'selected thread'); h.write('\r');
+    await h.waitFor(/\[Image #1\] segunda/, 'image markers in resumed chat');
+    for (const [label, original] of [['primera', red], ['segunda', blue]]) {
+      const marker = h.find('[Image #1] ' + label, 35); assert.ok(marker);
+      h.mouse(35, marker.x + 3, marker.y);
+      await h.waitFor(/╭─ \[Image #1\]/, 'hover popup'); await h.waitFor(/▀/, 'decoded image preview');
+      h.mouse(0, marker.x + 3, marker.y); h.mouse(0, marker.x + 3, marker.y, 'm');
+      const expected = label === 'primera' ? 1 : 2;
+      for (let i = 0; i < 100; i++) {
+        if (fs.existsSync(log) && fs.readFileSync(log, 'utf8').trim().split('\n').length >= expected) break;
+        await h.sleep(50);
+      }
+      const opened = fs.readFileSync(log, 'utf8').trim().split('\n');
+      assert.equal(opened.length, expected);
+      assert.deepEqual(fs.readFileSync(opened.at(-1)), original, 'click exports the correct original image');
+      h.mouse(35, 2, 2); await h.waitGone(/╭─ \[Image #1\]/, 'hover closes');
+    }
+    h.write('\x1b[18~'); await h.waitFor(/1\/2/, 'F7 gallery'); await h.waitFor(/16×8/, 'first image dimensions');
+    h.write('\x1b[C'); await h.waitFor(/2\/2/, 'second gallery image'); await h.waitFor(/12×6/, 'local image dimensions');
+    h.write('\x1b'); await h.waitFor(/FAKE CODEX/, 'gallery closes');
+  } finally { await h.close(); }
 });
 
 test('Codex embedded terminal: preview, resume, input, new chat and two live sessions', { timeout: 90000 }, async (t) => {
