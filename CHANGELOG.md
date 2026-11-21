@@ -1,6 +1,6 @@
 # Cambios
 
-## Sin publicar
+## 1.5.4
 
 ### Nuevo
 - La mascota adopta rasgos de mono más claros: orejas redondas, mechón y hocico, conservando los auriculares y los colores de Hopdeck. El dibujo también se actualiza en la terminal.
