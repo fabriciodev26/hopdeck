@@ -1,5 +1,11 @@
 # Cambios
 
+## 1.5.6
+
+### Documentación y comprobaciones
+- Instalación con pnpm documentada en español e inglés, con instrucciones para configurar la carpeta global y una nota sobre la espera de pnpm 12 para versiones recién publicadas.
+- Verificación automática de la instalación global del paquete publicado en Windows, Linux y macOS Intel, con Node 22/24 y pnpm 10.32.1/12.21.0. Comprueba el comando global, el terminal integrado de Claude y Codex, la reanudación, la entrada de texto y el cierre.
+
 ## 1.5.5
 
 ### Arreglado
