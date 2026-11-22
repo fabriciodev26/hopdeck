@@ -2,10 +2,13 @@
 
 ## Sin publicar
 
-## 1.5.7
+## 1.6.0
+
+### Nuevo
+- Asistente de primer inicio: elegir Claude Code o Codex y recordar el proveedor predeterminado. Si falta la CLI, ofrece descargar y ejecutar su instalador oficial para Windows, Linux o macOS, seguido del inicio de sesión de la propia CLI. Permite cancelar, reintentar y posponer el inicio de sesión; también recupera una CLI que se haya eliminado antes de abrir un chat.
+- Detección de las rutas de instalación nativas sin reiniciar la terminal. Las instalaciones de proveedores requieren aceptación en una terminal interactiva y no se ejecutan durante npm/pnpm, en CI ni con `HOPDECK_NOPROMPT=1`.
 
 ### Mejorado
-
 - Los enlaces del chat que muestran un título en lugar de una URL ahora abren su destino web al hacer clic (OSC 8), tanto en Claude como en Codex. Conservan el destino al partirse entre líneas, cambiar el ancho o recorrer el historial; arrastrar sigue seleccionando texto.
 
 ## 1.5.6
