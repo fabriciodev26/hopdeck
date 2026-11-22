@@ -2,7 +2,9 @@
 
 ## Qué hace (y qué no) este programa con tus datos
 
-- Lee el historial local de Claude Code (`~/.claude/projects`, o `CLAUDE_CONFIG_DIR`). En modo Codex, consulta `thread/list` y las vistas previas mediante `codex app-server` por stdin/stdout; no abre puertos ni modifica sus bases de datos. Hopdeck no añade telemetría, analítica ni peticiones de red propias. Las CLI de Claude y Codex conservan sus conexiones y ajustes habituales.
+- Lee el historial local de Claude Code (`~/.claude/projects`, o `CLAUDE_CONFIG_DIR`). En modo Codex, consulta `thread/list` y las vistas previas mediante `codex app-server` por stdin/stdout; no abre puertos ni modifica sus bases de datos. Hopdeck no añade telemetría ni analítica. Las CLI de Claude y Codex conservan sus conexiones y ajustes habituales.
+- Si falta el proveedor elegido, Hopdeck muestra la URL de su instalador oficial y pide aceptar antes de descargarlo por HTTPS y ejecutarlo. Solo permite como origen inicial `https://claude.ai/install.sh` / `install.ps1` o `https://chatgpt.com/codex/install.sh` / `install.ps1`; los redireccionamientos deben seguir usando HTTPS. La descarga tiene límites de tamaño y tiempo y se guarda en una carpeta temporal privada que se elimina después. El instalador oficial gestiona sus archivos y cambios de PATH. No se ejecuta durante la instalación npm/pnpm ni en CI o con `HOPDECK_NOPROMPT=1`.
+- El inicio de sesión se realiza con `claude auth login` o `codex login`, con entrada y salida directas a la terminal. Hopdeck no lee, copia ni guarda credenciales; solo recuerda si queda pendiente completar ese paso. Desinstalar Hopdeck conserva las CLI y sus cuentas.
 - Las imágenes de Codex se leen de sus adjuntos en la API local o de los archivos locales referenciados. Solo se aceptan archivos regulares con cabeceras de imagen reconocidas, de hasta 18 MB por imagen; no se descargan URL remotas ni se abren rutas de red.
 - Escribe solo en tu equipo:
   - `~/.hopdeck.json` (preferencias: proyectos fijados, ocultos, recientes…) y `~/.hopdeck-cache.json` (índice de títulos y primeros mensajes, con permisos solo para tu usuario).

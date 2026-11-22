@@ -170,6 +170,8 @@ test('primer arranque: pregunta si `claude` debe abrir Hopdeck, recuerda "No" y 
     assert.match(h.screen(), /hopdeck --provider codex/);
     assert.ok(!fs.existsSync(cfgFile), 'no guarda la bienvenida antes de continuar');
     h.write('\r');
+    await h.waitFor(/Qué quieres usar con Hopdeck/, 'elección del proveedor');
+    h.write('1');
     await h.waitFor(/abrir Hopdeck escribiendo claude/, 'pregunta del primer arranque', 40000);
     assert.match(h.screen(), /\[Enter\] Sí/, 'muestra las opciones');
     assert.match(h.screen(), /copia de seguridad/, 'avisa de la copia de seguridad');
@@ -179,6 +181,7 @@ test('primer arranque: pregunta si `claude` debe abrir Hopdeck, recuerda "No" y 
     const cfg = JSON.parse(fs.readFileSync(cfgFile, 'utf8'));
     assert.equal(cfg.shortcutAsked, true, 'queda guardado que ya se preguntó');
     assert.equal(cfg.welcomeSeen, true, 'queda guardado que ya se leyó la bienvenida');
+    assert.equal(cfg.defaultProvider, 'claude', 'recuerda el proveedor elegido');
     h.write('q');
     // al salir se ve la pantalla normal de la terminal: la pregunta ya no debe seguir escrita (parecía pendiente) y hay un resumen de una línea
     await h.waitFor(/Atajo no instalado/, 'resumen de la respuesta en la pantalla normal', 15000);
@@ -188,7 +191,85 @@ test('primer arranque: pregunta si `claude` debe abrir Hopdeck, recuerda "No" y 
   const again = launchHub({ root, fx, cwd: fx.cwds.alpha, env });
   try {
     await again.waitFor(/Sesión dos/, 'el siguiente arranque entra directamente al selector');
-    assert.doesNotMatch(again.screen(), /Bienvenido a Hopdeck|Enter para empezar|abrir Hopdeck escribiendo/);
+    assert.doesNotMatch(again.screen(), /Bienvenido a Hopdeck|Enter para empezar|abrir Hopdeck escribiendo|Qué quieres usar/);
+  } finally { await again.close(); }
+});
+
+function setupFixture(root, id) {
+  const fx = makeFixture(root, [alpha()]), home = path.join(root, 'home'); fs.mkdirSync(home);
+  const threads = path.join(root, 'threads.json');
+  fs.writeFileSync(threads, JSON.stringify([{ id: 'e1', name: 'Sesión uno', cwd: fx.cwds.alpha, updatedAt: Date.now() / 1000, source: 'cli', originator: 'codex_cli_rs' }]));
+  const pathKey = Object.keys(process.env).find((k) => k.toLowerCase() === 'path') || 'PATH';
+  return { root, fx, home, cwd: fx.cwds.alpha, args: ['--provider', id], env: {
+    HOPDECK_PROVIDER: id, HOPDECK_NOPROMPT: '', CI: '', CODEX_INSTALL_DIR: '', LOCALAPPDATA: path.join(home, 'local'),
+    [pathKey]: path.join(root, 'bin'), HOPDECK_PROFILES: path.join(root, 'profile.sh'), HOPDECK_FAKE_THREADS: threads,
+    NODE_OPTIONS: '--require ' + JSON.stringify(path.join(__dirname, 'fixtures', 'fake-provider-setup.js')),
+    FAKE_SETUP_ROOT: root, FAKE_SETUP_LOG: path.join(root, 'setup.log'),
+  } };
+}
+
+for (const id of ['claude', 'codex']) test('asistente de instalación: ' + id + ' ausente, instalar, iniciar sesión y abrir un chat', opts, async () => {
+  const root = tmp('hopdeck-ui-setup-'), options = setupFixture(root, id);
+  const h = launchHub({ ...options, fakeProvider: false });
+  try {
+    await h.waitFor(/Enter para empezar/, 'bienvenida'); h.write('\r');
+    await h.waitFor(/Instalar ahora/, 'ofrece instalar la CLI que falta');
+    assert.match(h.screen(), id === 'claude' ? /https:\/\/claude.ai\/install/ : /https:\/\/chatgpt.com\/codex\/install/);
+    h.write('\r');
+    await h.waitFor(/\[m\].*tarde/, 'ofrece iniciar sesión después de instalar'); h.write('\r');
+    await h.waitFor(/abrir Hopdeck escribiendo/, 'atajos después del inicio de sesión'); h.write('n');
+    await h.waitFor(/Sesión uno/, 'el proyecto está disponible');
+    const events = fs.readFileSync(options.env.FAKE_SETUP_LOG, 'utf8').trim().split('\n').map(JSON.parse);
+    assert.deepEqual(events.map((e) => e.action), ['install', 'status', 'login']);
+    assert.equal(events[0].id, id);
+    assert.deepEqual(events[2].args, id === 'claude' ? ['auth', 'login'] : ['login']);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'cfg.json'), 'utf8')).providerLoginPending, false);
+    const row = h.find('Sesión uno'); h.mouse(0, 5, row.y); h.mouse(0, 5, row.y, 'm');
+    await h.waitFor(id === 'claude' ? /FAKE CLAUDE/ : /FAKE CODEX/, 'la instalación continúa hasta el chat');
+    h.write('prueba de instalación\r'); await h.waitFor(/eco: prueba de instalación/, 'el chat acepta entrada');
+  } finally { await h.close(); }
+});
+
+test('asistente de instalación: cancelar no instala y una CLI borrada se puede recuperar desde el proyecto', opts, async () => {
+  const root = tmp('hopdeck-ui-recover-'), options = setupFixture(root, 'claude');
+  fs.writeFileSync(path.join(root, 'cfg.json'), JSON.stringify({ welcomeSeen: true, shortcutAsked: true }));
+  const cancelled = launchHub({ ...options, fakeProvider: false });
+  try {
+    await cancelled.waitFor(/Instalar ahora/, 'proveedor ausente'); cancelled.write('\x1b');
+    await cancelled.waitFor(/cancelada/i, 'confirma la cancelación');
+    assert.ok(!fs.existsSync(options.env.FAKE_SETUP_LOG));
+  } finally { await cancelled.close(); }
+  const h = launchHub(options);
+  try {
+    await h.waitFor(/Sesión uno/, 'proyecto con CLI disponible');
+    fs.unlinkSync(path.join(root, 'bin', process.platform === 'win32' ? 'claude.cmd' : 'claude'));
+    const row = h.find('Sesión uno'); h.mouse(0, 5, row.y); h.mouse(0, 5, row.y, 'm');
+    await h.waitFor(/Instalar ahora/, 'detecta que la CLI desapareció'); h.write('\r');
+    await h.waitFor(/\[m\].*tarde/, 'autenticación tras recuperar la CLI'); h.write('\r');
+    await h.waitFor(/FAKE CLAUDE/, 'abre el chat solicitado antes de la recuperación');
+  } finally { await h.close(); }
+});
+
+test('primer arranque: elegir Codex no repite la bienvenida y bare hopdeck recuerda la elección', opts, async () => {
+  const root = tmp('hopdeck-ui-default-'), options = setupFixture(root, 'codex');
+  options.args = []; options.env.HOPDECK_PROVIDER = '';
+  // Create both CLI shims; the helper defaults to Claude on a bare invocation.
+  const prime = launchHub({ ...options, env: { ...options.env, HOPDECK_PROVIDER: 'codex', HOPDECK_NOPROMPT: '1' } });
+  await prime.close();
+  const h = launchHub(options);
+  try {
+    await h.waitFor(/Enter para empezar/, 'bienvenida inicial'); h.write('\r');
+    await h.waitFor(/Qué quieres usar con Hopdeck/, 'elección inicial'); h.write('2');
+    await h.waitFor(/abrir Hopdeck escribiendo/, 'continúa en Codex sin repetir la bienvenida'); h.write('n');
+    await h.waitFor(/Sesión uno/, 'historial de Codex');
+    assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'cfg.json'), 'utf8')).defaultProvider, 'codex');
+  } finally { await h.close(); }
+  const again = launchHub(options);
+  try {
+    await again.waitFor(/Sesión uno/, 'recuerda Codex al volver a abrir');
+    assert.doesNotMatch(again.screen(), /Qué quieres usar|Enter para empezar|Instalar ahora/);
+    const row = again.find('Sesión uno'); again.mouse(0, 5, row.y); again.mouse(0, 5, row.y, 'm');
+    await again.waitFor(/FAKE CODEX/, 'abre la CLI elegida');
   } finally { await again.close(); }
 });
 

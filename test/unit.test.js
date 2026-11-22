@@ -658,15 +658,17 @@ test('gitBranch: guarda el resultado unos segundos (en WSL leer /mnt/c cuesta ~4
   assert.equal(hd.gitBranch(path.join(d, 'no-existe')), '', 'sin git devuelve vacío');
 });
 
-test('findClaude: recuerda dónde está y vuelve a buscar si el archivo desaparece', () => {
+test('findClaude: recuerda dónde está, respeta cambios de PATH y vuelve a buscar si desaparece', () => {
   const prev = process.env.PATH, win = process.platform === 'win32', exe = win ? 'prog-memoria.cmd' : 'prog-memoria';
   const crear = (dir) => { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, exe), win ? '@echo off\r\n' : '#!/bin/sh\n'); if (!win) fs.chmodSync(path.join(dir, exe), 0o755); return path.join(dir, exe); };
   const d1 = path.join(tmp('hopdeck-fc-'), 'a'), d2 = path.join(tmp('hopdeck-fc-'), 'b');
   try {
     const f1 = crear(d1); process.env.PATH = d1 + path.delimiter + prev;
     assert.equal(hd.findClaude('prog-memoria').toLowerCase(), f1.toLowerCase());
-    process.env.PATH = prev; // aunque el PATH cambie, mientras el archivo exista se devuelve el recordado
     assert.equal(hd.findClaude('prog-memoria').toLowerCase(), f1.toLowerCase(), 'lo recuerda');
+    process.env.PATH = prev;
+    assert.equal(hd.findClaude('prog-memoria'), null, 'no conserva una ruta que se ha quitado del PATH');
+    process.env.PATH = d1 + path.delimiter + prev;
     fs.rmSync(f1);
     assert.equal(hd.findClaude('prog-memoria'), null, 'si desaparece, busca de nuevo y no inventa');
     const f2 = crear(d2); process.env.PATH = d2 + path.delimiter + prev;

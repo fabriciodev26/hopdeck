@@ -43,7 +43,7 @@
     "wsl"
   ],
   "scripts": {
-    "test": "node --test test/unit.test.js test/e2e.test.js test/ui.test.js test/codex.test.js",
+    "test": "node --test test/unit.test.js test/e2e.test.js test/ui.test.js test/codex.test.js test/setup.test.js",
     "doctor": "node bin/hopdeck.js doctor",
     "screenshots": "node scripts/screenshots.js",
     "demo": "node scripts/demo.js"

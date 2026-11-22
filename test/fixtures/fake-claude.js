@@ -1,4 +1,5 @@
 // "claude" de mentira para las pruebas: imprime un banner, responde a cada línea y sale con /exit.
+if (process.argv[2] === '--version') { console.log('claude test'); process.exit(0); }
 const mode = process.env.FAKE_MODE || '';
 if (mode === 'alt') process.stdout.write('\x1b[?1049h\x1b[2J\x1b[HALT SCREEN\r\n'); // pantalla alternativa, como Claude a pantalla completa
 if (mode === 'mouse') process.stdout.write('\x1b[?1000h\x1b[?1006h'); // Claude captura el ratón
