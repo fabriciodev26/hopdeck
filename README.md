@@ -71,6 +71,15 @@ npm install -g hopdeck
 hopdeck
 ```
 
+También puedes instalarlo con pnpm:
+
+```bash
+pnpm add -g hopdeck@latest
+hopdeck
+```
+
+Si pnpm pide configurar su carpeta global, ejecuta `pnpm setup` y abre una terminal nueva. pnpm 12 puede seleccionar la versión anterior durante su espera predeterminada de 24 horas para versiones recién publicadas.
+
 Al abrir cada modo de Hopdeck por primera vez aparece una bienvenida con la versión y los comandos para empezar. Pulsa `Enter` para continuar o `Esc` para omitirla; después no vuelve a aparecer en ese modo. Sigue la pregunta habitual de los atajos. No se muestra con `--version`, `--help`, `--list`, en CI ni con `HOPDECK_NOPROMPT=1`. La instalación sigue siendo `npm install -g hopdeck`, sin opciones adicionales.
 
 Listo. También puedes probarlo sin instalar: `npx hopdeck`.

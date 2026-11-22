@@ -16,6 +16,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  pnpm-install:
+    name: pnpm ${{ matrix.pnpm }} (${{ matrix.os }}, Node ${{ matrix.node }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: [22, 24]
+        pnpm: ['10.32.1', '12.21.0']
+    runs-on: ${{ matrix.os == 'macos-latest' && 'macos-26-intel' || matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Preparar pnpm aislado
+        shell: bash
+        run: npm install --prefix "$RUNNER_TEMP/hopdeck-pnpm-cli" "pnpm@${{ matrix.pnpm }}" --ignore-scripts --no-audit --no-fund
+      - name: Instalar la versión publicada y abrir ambos proveedores
+        shell: bash
+        run: node scripts/check-pnpm-install.js "$RUNNER_TEMP/hopdeck-pnpm-cli/node_modules/pnpm"
+
   test:
     strategy:
       fail-fast: false
