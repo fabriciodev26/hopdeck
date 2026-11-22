@@ -1,6 +1,7 @@
 'use strict';
 const fs = require('fs');
 const args = process.argv.slice(2);
+if (args[0] === '--version') { console.log('codex test'); process.exit(0); }
 const file = process.env.HOPDECK_FAKE_THREADS;
 const read = () => JSON.parse(fs.readFileSync(file, 'utf8'));
 const items = (id) => process.env.HOPDECK_FAKE_ITEMS ? JSON.parse(fs.readFileSync(process.env.HOPDECK_FAKE_ITEMS, 'utf8'))[id] || [] : null;

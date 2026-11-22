@@ -14,7 +14,7 @@ let provider;
 try { provider = require('../lib/provider'); }
 catch (err) { if (require.main !== module) throw err; console.error(err.message); process.exit(2); }
 const codexHistory = require('../lib/codex-history');
-const { findExecutable } = require('../lib/executable');
+const providerSetup = require('../lib/provider-setup');
 
 const { LANG, T } = require('../lib/i18n');
 const { showWelcome } = require('../lib/welcome');
@@ -1916,6 +1916,7 @@ function diffRows(rows) {
 }
 
 function render() {
+  if (!active) return;
   if (EMBED) return renderEmbed();
   const cols = process.stdout.columns || 100, rows = process.stdout.rows || 30;
   const lines = SIDEBAR ? frameTree(cols, rows) : frame(cols, rows);
@@ -1957,14 +1958,28 @@ const extraArgs = [];
 /** Busca el ejecutable real de claude en el PATH (no depende de funciones del shell). */
 /** Busca un programa en el PATH (por defecto `claude`). Recuerda el resultado mientras el archivo siga existiendo. */
 function findClaude(name = 'claude') {
-  return findExecutable(name);
+  return providerSetup.findProvider(name);
 }
+
+const ensureSelectedProvider = () => providerSetup.ensureProvider({ id: provider.id, config: CFG, save: saveCfg, ask: readKey, T,
+  install: () => providerSetup.installProvider(provider.id), run: providerSetup.runCommand });
+let settingUpProvider = false;
 
 /** El id de una sesión sale del nombre de su archivo; solo se pasa a `claude --resume` si es un identificador normal. */
 const safeId = (id) => /^[A-Za-z0-9._-]{1,128}$/.test(String(id || ''));
 
-function launch(project, session) {
+async function launch(project, session) {
   if (session && !safeId(session.id)) { flash(T.badId); return; }
+  if (!findClaude(provider.id)) {
+    if (settingUpProvider) return;
+    settingUpProvider = true;
+    const wasActive = active; leave(); codexHistory.close();
+    let ready = false;
+    try { ready = await ensureSelectedProvider(); }
+    catch (error) { process.stdout.write(clean(error.message) + '\n'); }
+    finally { settingUpProvider = false; if (wasActive) { enter(); render(); } }
+    if (!ready) return flash(T.setupUnavailable(provider.label, provider.id));
+  }
   if (SIDEBAR) return launchSlot(project, session);
   if (EMBED) return embedLaunch(project, session);
   if (!fs.existsSync(project.cwd)) { flash(T.missing + ': ' + shortPath(project.cwd)); return; }
@@ -2073,8 +2088,22 @@ function splash(done, total) {
 async function run() {
   if (!process.stdin.isTTY || !process.stdout.isTTY) { printList(); return; }
   if (!SIDEBAR && process.env.HOPDECK_INSIDE) { console.log(T.inside); return; }
-  if (!SIDEBAR) await showWelcome({ config: CFG, save: saveCfg, lang: LANG,
-    wait: () => readKey(k => /^[\r\n]+$/.test(k) || k === '\x1b' ? true : undefined) });
+  if (!SIDEBAR) {
+    if (process.env.HOPDECK_WELCOME_DONE) { CFG.welcomeSeen = true; saveCfg(); }
+    await showWelcome({ config: CFG, save: saveCfg, lang: LANG,
+      wait: () => readKey(k => /^[\r\n]+$/.test(k) || k === '\x1b' ? true : undefined) });
+    if (!provider.explicit && !provider.preferred && providerSetup.canPrompt()) {
+      const selected = await providerSetup.chooseProvider({ ask: readKey, T });
+      if (!selected) return;
+      CFG.defaultProvider = selected; saveCfg();
+      if (selected !== provider.id) {
+        process.exitCode = await providerSetup.runCommand(process.execPath, [__filename, '--provider', selected, ...provider.args],
+          { env: { ...process.env, HOPDECK_PROVIDER: selected, HOPDECK_WELCOME_DONE: '1' }, timeout: 0 });
+        return;
+      }
+    }
+    if (!await ensureSelectedProvider()) { if (!providerSetup.canPrompt()) process.exitCode = 1; return; }
+  }
   if (!SIDEBAR) await offerShortcut(); // primera vez: ¿quieres que `claude` abra Hopdeck?
   if (!SIDEBAR) {
     // Por defecto se usa el terminal integrado (vista previa al pasar el cursor, imágenes). tmux solo con HOPDECK_TMUX=1,

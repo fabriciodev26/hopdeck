@@ -61,7 +61,7 @@ Hopdeck te enseña **todos tus proyectos y conversaciones en una sola pantalla**
 **Necesitas**
 
 - [Node.js](https://nodejs.org) 22 o superior.
-- [Claude Code](https://claude.com/claude-code) o [Codex CLI](https://developers.openai.com/codex/cli) instalado (el comando correspondiente debe funcionar en tu terminal).
+- Una cuenta para [Claude Code](https://claude.com/claude-code) o [Codex CLI](https://developers.openai.com/codex/cli). Si falta la CLI elegida, Hopdeck ofrece instalarla al abrirlo.
 - Una terminal con color. En Windows se recomienda **Windows Terminal**.
 
 **Instalar**
@@ -80,7 +80,11 @@ hopdeck
 
 Si pnpm pide configurar su carpeta global, ejecuta `pnpm setup` y abre una terminal nueva. pnpm 12 puede seleccionar la versión anterior durante su espera predeterminada de 24 horas para versiones recién publicadas.
 
-Al abrir cada modo de Hopdeck por primera vez aparece una bienvenida con la versión y los comandos para empezar. Pulsa `Enter` para continuar o `Esc` para omitirla; después no vuelve a aparecer en ese modo. Sigue la pregunta habitual de los atajos. No se muestra con `--version`, `--help`, `--list`, en CI ni con `HOPDECK_NOPROMPT=1`. La instalación sigue siendo `npm install -g hopdeck`, sin opciones adicionales.
+Al abrir Hopdeck por primera vez aparece una bienvenida. Pulsa `Enter` para continuar o `Esc` para omitirla. Si entras con `hopdeck`, puedes elegir **Claude Code** o **Codex**; se recuerda tu elección. También puedes elegir directamente con `hopdeck --provider claude` o `hopdeck --provider codex`.
+
+Si la CLI elegida no está instalada, verás **Instalar ahora** y la dirección del instalador oficial. Al aceptar, Hopdeck descarga y ejecuta el instalador de Anthropic u OpenAI para Windows, Linux o macOS, y después ofrece iniciar sesión mediante la propia CLI. Puedes cancelar, reintentar si falla o dejar el inicio de sesión para más tarde. Solo se instala el proveedor elegido. Si ya lo tienes, continúa directamente a tus proyectos. Si lo desinstalas después, Hopdeck vuelve a ofrecer instalarlo al intentar abrir un chat.
+
+La instalación del proveedor necesita internet y su intérprete: PowerShell en Windows, Bash para Claude o `sh` para Codex en Linux/macOS. Hopdeck reconoce las rutas habituales de las instalaciones nativas sin exigir reiniciar la terminal. No instala proveedores durante `npm install` / `pnpm add`, con `--version`, `--help`, `--list`, en CI ni con `HOPDECK_NOPROMPT=1`. Al desinstalar Hopdeck, las CLI de Claude/Codex se conservan.
 
 Listo. También puedes probarlo sin instalar: `npx hopdeck`.
 
@@ -290,8 +294,8 @@ Otras variables: `HOPDECK_TMUX=1` usa paneles de tmux en Linux/macOS, `HOPDECK_E
 
 ## Privacidad
 
-- **No envía nada a internet.** Sin telemetría, sin analítica, sin peticiones de red. Todo ocurre en tu equipo.
-- Lee tu historial local de Claude Code y lanza el `claude` que ya tienes. No toca tu sesión ni tus credenciales.
+- **Sin telemetría ni analítica.** El historial se consulta localmente. Hopdeck solo descarga un instalador si aceptas preparar un proveedor que falta; cada CLI conserva sus conexiones habituales.
+- Lee el historial de Claude Code o Codex y lanza su CLI. La autenticación la gestiona cada proveedor; Hopdeck no guarda tus credenciales.
 - Solo escribe sus preferencias y su caché (en tu carpeta de usuario), el bloque de `hopdeck shortcut on` en tu perfil de shell y, si renombras una conversación, el título de esa conversación.
 
 Más detalles, y cómo avisar de un problema de seguridad: [SECURITY.md](SECURITY.md).
