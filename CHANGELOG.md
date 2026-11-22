@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+## 1.5.7
+
+### Mejorado
+
 - Los enlaces del chat que muestran un título en lugar de una URL ahora abren su destino web al hacer clic (OSC 8), tanto en Claude como en Codex. Conservan el destino al partirse entre líneas, cambiar el ancho o recorrer el historial; arrastrar sigue seleccionando texto.
 
 ## 1.5.6
