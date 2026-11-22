@@ -256,9 +256,16 @@ test('primer arranque: elegir Codex no repite la bienvenida y bare hopdeck recue
   // Create both CLI shims; the helper defaults to Claude on a bare invocation.
   const prime = launchHub({ ...options, env: { ...options.env, HOPDECK_PROVIDER: 'codex', HOPDECK_NOPROMPT: '1' } });
   await prime.close();
+  const cancelled = launchHub(options);
+  try {
+    await cancelled.waitFor(/Enter para empezar/, 'bienvenida inicial'); cancelled.write('\r');
+    await cancelled.waitFor(/Qué quieres usar con Hopdeck/, 'permite cancelar la elección'); cancelled.write('\x1b');
+    for (let i = 0; i < 100 && !cancelled.exited; i++) await cancelled.sleep(60);
+    assert.equal(cancelled.exited, true);
+    assert.ok(!JSON.parse(fs.readFileSync(path.join(root, 'cfg.json'), 'utf8')).defaultProvider);
+  } finally { await cancelled.close(); }
   const h = launchHub(options);
   try {
-    await h.waitFor(/Enter para empezar/, 'bienvenida inicial'); h.write('\r');
     await h.waitFor(/Qué quieres usar con Hopdeck/, 'elección inicial'); h.write('2');
     await h.waitFor(/abrir Hopdeck escribiendo/, 'continúa en Codex sin repetir la bienvenida'); h.write('n');
     await h.waitFor(/Sesión uno/, 'historial de Codex');

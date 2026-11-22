@@ -2089,17 +2089,16 @@ async function run() {
   if (!process.stdin.isTTY || !process.stdout.isTTY) { printList(); return; }
   if (!SIDEBAR && process.env.HOPDECK_INSIDE) { console.log(T.inside); return; }
   if (!SIDEBAR) {
-    const firstOpen = !CFG.welcomeSeen;
     if (process.env.HOPDECK_WELCOME_DONE) { CFG.welcomeSeen = true; saveCfg(); }
-    const welcomed = await showWelcome({ config: CFG, save: saveCfg, lang: LANG,
+    await showWelcome({ config: CFG, save: saveCfg, lang: LANG,
       wait: () => readKey(k => /^[\r\n]+$/.test(k) || k === '\x1b' ? true : undefined) });
-    if (firstOpen && !provider.explicit && !provider.preferred && providerSetup.canPrompt()) {
+    if (!provider.explicit && !provider.preferred && providerSetup.canPrompt()) {
       const selected = await providerSetup.chooseProvider({ ask: readKey, T });
       if (!selected) return;
       CFG.defaultProvider = selected; saveCfg();
       if (selected !== provider.id) {
         process.exitCode = await providerSetup.runCommand(process.execPath, [__filename, '--provider', selected, ...provider.args],
-          { env: { ...process.env, HOPDECK_PROVIDER: selected, ...(welcomed ? { HOPDECK_WELCOME_DONE: '1' } : {}) }, timeout: 0 });
+          { env: { ...process.env, HOPDECK_PROVIDER: selected, HOPDECK_WELCOME_DONE: '1' }, timeout: 0 });
         return;
       }
     }
