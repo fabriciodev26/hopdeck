@@ -783,6 +783,50 @@ test('URL clicks: wide characters, wrapped URLs, punctuation and allowed protoco
   term.dispose();
 });
 
+test('URL clicks: OSC 8 labels keep their destination through chunked writes, wraps and resizing', async () => {
+  const { Terminal } = require('@xterm/headless'), { urlAt } = require('../lib/links');
+  const term = new Terminal({ cols: 24, rows: 8, allowProposedApi: true });
+  const write = (s) => new Promise((resolve) => term.write(s, resolve));
+  const url = 'https://github.com/fabriciodev26/hopdeck/compare/main...codex/provider-setup?expand=1';
+  const label = 'Revisar los cambios y crear el PR';
+  try {
+    await write('日本 \x1b]8;id=pr;' + url.slice(0, 20));
+    await write(url.slice(20) + '\x1b');
+    await write('\\' + label + '\x1b]8;;\x1b\\ FIN');
+    assert.equal(urlAt(term, 0, 5), url, 'the label opens its hidden destination');
+    assert.equal(urlAt(term, 1, 3), url, 'the wrapped label is clickable');
+    assert.equal(urlAt(term, 0, 1), null, 'text before the link is not clickable');
+    const end = 5 + label.length;
+    assert.equal(urlAt(term, Math.floor(end / 24), end % 24), null, 'closing OSC 8 ends the clickable area');
+    term.resize(18, 8);
+    assert.equal(urlAt(term, 0, 6), url, 'link data survives reflow');
+    assert.equal(urlAt(term, 1, 2), url);
+  } finally { term.dispose(); }
+});
+
+test('URL clicks: OSC 8 uses each cell destination, supports BEL, wide text and scrollback, and rejects unsafe schemes', async () => {
+  const { Terminal } = require('@xterm/headless'), { urlAt } = require('../lib/links');
+  const term = new Terminal({ cols: 48, rows: 4, allowProposedApi: true, scrollback: 20 });
+  const write = (s) => new Promise((resolve) => term.write(s, resolve));
+  const link = (url, label) => '\x1b]8;;' + url + '\x07' + label + '\x1b]8;;\x07';
+  try {
+    await write(link('https://example.com/one', '日本語') + ' ' + link('https://example.com/two', '日本語') + '\r\n');
+    assert.equal(urlAt(term, 0, 1), 'https://example.com/one', 'second cell of a wide character');
+    assert.equal(urlAt(term, 0, 8), 'https://example.com/two', 'identical labels can have different destinations');
+    await write(link('javascript:alert(1)', 'https://example.com/looks-safe') + '\r\n' + link('file:///tmp/example', 'Archivo') + '\r\n');
+    assert.equal(urlAt(term, 1, 4), null, 'an unsafe destination cannot fall back to a safe-looking label');
+    assert.equal(urlAt(term, 2, 2), null);
+    await write('line 4\r\nline 5\r\n'); term.scrollToTop();
+    assert.equal(urlAt(term, 0, 1), 'https://example.com/one', 'scrollback uses the visible buffer row');
+    await write('\x1b[?1049h\x1b[H' + link('https://example.com/alternate', 'Alternativo'));
+    assert.equal(urlAt(term, 0, 4), 'https://example.com/alternate', 'alternate buffer links');
+    await write('\x1b[?1049l'); term.scrollToTop();
+    assert.equal(urlAt(term, 0, 1), 'https://example.com/one', 'returning to normal restores its links');
+    await write('\x1b[3J\x1b[2J\x1b[Htexto sin enlace');
+    assert.equal(urlAt(term, 0, 3), null, 'erased text cannot retain an old link');
+  } finally { term.dispose(); }
+});
+
 test('shownSession: un chat nuevo sin enlazar solo toma una conversación creada después de abrirlo', async () => {
   const saved = { ...hd.S };
   try {

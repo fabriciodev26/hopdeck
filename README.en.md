@@ -177,7 +177,7 @@ It always starts at `~`. Recently used folders appear on top (`↻ recent`).
 
 ### Images in the chat
 
-In Claude and Codex chats, click an `http://` or `https://` URL to open your default browser. Links wrapped across lines also work; dragging over text still selects it.
+In Claude and Codex chats, click an `http://` or `https://` URL to open your default browser. Links displaying a title instead of the address (OSC 8) and links wrapped across lines also work; dragging over text still selects it.
 
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/04-hover-imagen-light.svg">

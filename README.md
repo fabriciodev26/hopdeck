@@ -177,7 +177,7 @@ Empieza siempre en `~`. Las carpetas que usaste hace poco aparecen arriba (`↻ 
 
 ### Imágenes del chat
 
-En los chats de Claude y Codex, un clic sobre una URL `http://` o `https://` abre el navegador predeterminado. También reconoce enlaces partidos entre líneas; arrastrar sobre el texto permite seleccionarlo.
+En los chats de Claude y Codex, un clic sobre una URL `http://` o `https://` abre el navegador predeterminado. También funcionan los enlaces que muestran un título en lugar de la dirección (OSC 8) y los partidos entre líneas; arrastrar sobre el texto permite seleccionarlo.
 
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/04-hover-imagen-light.svg">

@@ -283,8 +283,9 @@ for (const provider of ['claude', 'codex']) test(`enlaces en ${provider}: clic a
   const fx = makeFixture(root, [alpha()]), threads = path.join(root, 'threads.json');
   fs.writeFileSync(threads, JSON.stringify([{ id: 'link-session', name: 'Sesión uno', preview: 'links', cwd: fx.cwds.alpha, updatedAt: 1700000000, source: 'cli', originator: 'codex_cli_rs' }]));
   const first = 'https://example.com/?a=1&b=2#section', wrapped = 'https://example.com/' + 'long-path/'.repeat(12) + '?tail=ok';
+  const hidden = 'https://github.com/fabriciodev26/hopdeck/compare/main...codex/provider-setup?expand=1';
   const h = launchHub({ root, fx, cwd: fx.cwds.alpha, env: { HOPDECK_PROVIDER: provider, HOPDECK_FAKE_THREADS: threads, HOPDECK_OPEN_LOG: log,
-    FAKE_PRINT: `visita ${first}\r\n${wrapped}\r\nfile:///tmp/example javascript:alert(1)` }, args: ['--provider', provider] });
+    FAKE_PRINT: `visita ${first}\r\n${wrapped}\r\nfile:///tmp/example javascript:alert(1)\r\n\x1b]8;;${hidden}\x1b\\\x1b[4mRevisar los cambios y crear el PR\x1b[24m\x1b]8;;\x1b\\` }, args: ['--provider', provider] });
   const opened = () => fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n') : [];
   try {
     await h.waitFor(/alpha/, 'project list');
@@ -303,6 +304,13 @@ for (const provider of ['claude', 'codex']) test(`enlaces en ${provider}: clic a
     h.mouse(0, tail.x + 2, tail.y); h.mouse(0, tail.x + 2, tail.y, 'm');
     for (let i = 0; i < 100 && opened().length < 2; i++) await h.sleep(50);
     assert.deepEqual(opened(), [first, wrapped], 'wrapped URL opens once with its query intact');
+    const label = h.find('Revisar los cambios', 35); assert.ok(label);
+    h.mouse(0, label.x + 2, label.y); h.mouse(32, label.x + 7, label.y); h.mouse(0, label.x + 7, label.y, 'm');
+    await h.waitFor(/copiar/, 'dragging a labelled link still selects text');
+    assert.deepEqual(opened(), [first, wrapped]);
+    h.mouse(0, label.x + 2, label.y); h.mouse(0, label.x + 2, label.y, 'm');
+    for (let i = 0; i < 100 && opened().length < 3; i++) await h.sleep(50);
+    assert.deepEqual(opened(), [first, wrapped, hidden], 'clicking a label opens its OSC 8 destination');
   } finally { await h.close(); }
 });
 
